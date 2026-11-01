@@ -1,9 +1,15 @@
 import Link from "next/link";
+import { logout } from "./logg-inn/actions";
 
 export default function Home() {
   return (
     <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-2xl font-semibold">Regnskap</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Regnskap</h1>
+        <form action={logout}>
+          <button className="text-sm text-gray-600 underline">Logg ut</button>
+        </form>
+      </div>
       <p className="mt-2 text-gray-600">Fakturering og bokføring etter norske regler.</p>
       <ul className="mt-6 grid gap-3">
         <li>

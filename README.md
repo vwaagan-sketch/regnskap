@@ -24,6 +24,16 @@ DATABASE_URL=postgres://regnskap:regnskap@localhost:5432/regnskap npm run migrat
 npm run dev                     # http://localhost:3000
 ```
 
+## Innlogging
+
+Appen har én bruker. Sett `APP_USER`, `APP_PASSWORD` og `SESSION_SECRET` (minst 32 tegn). Alle sider og API-er krever innlogging, unntatt `/logg-inn` og `/api/helse`.
+
+## Drift på Render
+
+- Webtjeneste: bygg `npm ci && npm run build`, start `npm run migrate && npm start`.
+- Database: Render PostgreSQL i Frankfurt (EU).
+- Miljøvariabler: `DATABASE_URL`, `APP_USER`, `APP_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`.
+
 ## Tester
 
 ```bash
