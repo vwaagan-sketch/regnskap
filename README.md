@@ -4,6 +4,15 @@ Faktura- og regnskapsprogram for eget firma, laget etter norske regler (bokføri
 
 Plan, lovkrav og veikart: se prosjektdokumentet «Faktura- og regnskapsprogram: lovkrav, arkitektur og MVP».
 
+## Funksjoner
+
+- **Oversikt** med bank, kundefordringer, resultat, MVA å betale og graf per måned.
+- **Kvittering:** ta bilde med mobilen, Claude leser av leverandør, beløp og MVA, du retter og bokfører. Originalen arkiveres.
+- **Bilag:** manuelle bilag med fri postering, automatisk MVA-splitt og vedlegg (ny fil eller fra arkivet). Søkbar bilagsliste.
+- **Arkiv:** dra-og-slipp-opplasting av bilder, PDF og andre filer. Ingenting kan slettes; oppbevaringsfrist vises.
+- **Fakturaer:** kunderegister med oppslag i Brønnøysundregistrene, fakturaer med løpenummer og KID, utskrift/PDF, kreditnota og registrering av innbetaling.
+- **Saldobalanse** per år.
+
 ## Status
 
 Første fase (MVP: fakturering) er under arbeid. Dette finnes nå:
