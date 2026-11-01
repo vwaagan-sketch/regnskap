@@ -2,7 +2,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import postgres from "postgres";
 
 const url = process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL mangler");
+if (!url) {
+  console.warn("DATABASE_URL er ikke satt. Hopper over databasemigrering.");
+  process.exit(0);
+}
 const sql = postgres(url);
 
 await sql`CREATE TABLE IF NOT EXISTS schema_migration (name text PRIMARY KEY, applied_at timestamptz DEFAULT now())`;
