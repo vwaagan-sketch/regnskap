@@ -1,0 +1,36 @@
+/** Utvalg fra standard kontoplan NS 4102 som MVP-en trenger. */
+export const ACCOUNTS = {
+  bank: "1920",
+  customerReceivables: "1500",
+  inputVat: "2710",
+  outputVatHigh: "2700",
+  outputVatMedium: "2701",
+  outputVatLow: "2702",
+  supplierPayables: "2400",
+  salesTaxable: "3000",
+  salesExempt: "3100",
+  goodsPurchase: "4000",
+  officeSupplies: "6800",
+  travel: "7140",
+  otherOperatingCost: "7790",
+} as const;
+
+export const ACCOUNT_NAMES: Record<string, string> = {
+  "1500": "Kundefordringer",
+  "1920": "Bankinnskudd",
+  "2400": "Leverandørgjeld",
+  "2700": "Utgående MVA, høy sats",
+  "2701": "Utgående MVA, middels sats",
+  "2702": "Utgående MVA, lav sats",
+  "2710": "Inngående MVA",
+  "3000": "Salgsinntekt, avgiftspliktig",
+  "3100": "Salgsinntekt, avgiftsfri",
+  "4000": "Innkjøp av varer",
+  "6300": "Leie lokale",
+  "6540": "Inventar",
+  "6800": "Kontorrekvisita",
+  "6900": "Telefon og internett",
+  "7140": "Reisekostnad",
+  "7350": "Representasjon",
+  "7790": "Annen driftskostnad",
+};
