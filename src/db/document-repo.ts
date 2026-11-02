@@ -35,12 +35,7 @@ export function kindFor(mediaType: string): string {
   return mediaType.startsWith("image/") ? "image" : mediaType === "application/pdf" ? "pdf" : "file";
 }
 
-export async function storeDocument(
-  tx: postgres.TransactionSql,
-  companyId: number,
-  d: NewDocument,
-  actor = "bruker",
-): Promise<string> {
+export async function storeDocument(tx: postgres.TransactionSql, companyId: number, d: NewDocument, actor = "bruker"): Promise<string> {
   const sha = createHash("sha256").update(d.content).digest("hex");
   const [doc] = await tx<{ id: string }[]>`
     INSERT INTO document (company_id, kind, storage_key, sha256, retain_until, filename, title, size_bytes, document_date)
@@ -53,11 +48,11 @@ export async function storeDocument(
   return doc.id;
 }
 
-export async function getDocument(sql: postgres.Sql, id: string) {
+export async function getDocument(sql: postgres.Sql, companyId: number, id: string) {
   if (!/^[0-9a-f-]{36}$/.test(id)) return null;
   const [row] = await sql<{ media_type: string; content: Buffer; filename: string | null }[]>`
     SELECT b.media_type, b.content, d.filename
-    FROM document_blob b JOIN document d ON d.id = b.document_id WHERE b.document_id = ${id}`;
+    FROM document_blob b JOIN document d ON d.id = b.document_id WHERE b.document_id = ${id} AND d.company_id = ${companyId}`;
   return row ?? null;
 }
 

@@ -1,13 +1,24 @@
 "use client";
 
-import { useActionState, useRef, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition, type ReactNode } from "react";
 import { Search, Check } from "lucide-react";
 import { Alert, Button, Card, Field, inputClass } from "@/components/ui";
 import type { CompanyRow } from "@/db/company-repo";
-import { lookupOrgNo, saveFirma } from "./actions";
+import { lookupOrgNo, type FirmaState } from "./actions";
 
-export default function FirmaForm({ company }: { company: CompanyRow | null }) {
-  const [state, action, pending] = useActionState(saveFirma, { ok: false, errors: [] });
+export default function FirmaForm({ company, action: submit, submitLabel = "Lagre", children, bottom, bare = false }: {
+  company: CompanyRow | null;
+  action: (prev: FirmaState, form: FormData) => Promise<FirmaState>;
+  submitLabel?: string;
+  /** Ekstra felt øverst i skjemaet, f.eks. brukeropplysninger ved registrering. */
+  children?: ReactNode;
+  /** Ekstra felt rett over lagreknappen. */
+  bottom?: ReactNode;
+  /** Uten kortramme, når skjemaet ligger i en annen ramme. */
+  bare?: boolean;
+}) {
+  const [state, action, pending] = useActionState(submit, { ok: false, errors: [] });
+  const [, startSubmit] = useTransition();
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [looking, startLookup] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
@@ -29,9 +40,17 @@ export default function FirmaForm({ company }: { company: CompanyRow | null }) {
     });
   }
 
-  return (
-    <Card>
-      <form ref={formRef} action={action} className="grid gap-5 p-5 sm:grid-cols-2">
+  const body = (
+      <form
+        ref={formRef}
+        // onSubmit i stedet for action, slik at feltene ikke tømmes når lagringen feiler.
+        onSubmit={(e) => {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          startSubmit(() => action(data));
+        }}
+        className={bare ? "grid gap-5 sm:grid-cols-2" : "grid gap-5 p-5 sm:grid-cols-2"}>
+        {children}
         <Field label="Organisasjonsnummer" className="sm:col-span-2">
           <div className="flex gap-2">
             <input name="org_no" inputMode="numeric" defaultValue={company?.org_no} placeholder="123 456 789" className={inputClass} required />
@@ -64,12 +83,13 @@ export default function FirmaForm({ company }: { company: CompanyRow | null }) {
           <input type="checkbox" name="in_business_register" defaultChecked={company?.in_business_register ?? true} className="h-4 w-4 rounded accent-indigo-600" />
           Registrert i Foretaksregisteret
         </label>
+        {bottom}
         <div className="flex flex-col gap-3 sm:col-span-2">
           {state.errors.length > 0 && <Alert kind="error">{state.errors.join(". ")}</Alert>}
           {state.ok && <Alert kind="success"><span className="inline-flex items-center gap-2"><Check className="h-4 w-4" /> Lagret</span></Alert>}
-          <div><Button disabled={pending}>{pending ? "Lagrer …" : "Lagre"}</Button></div>
+          <div><Button disabled={pending}>{pending ? "Lagrer …" : submitLabel}</Button></div>
         </div>
       </form>
-    </Card>
   );
+  return bare ? body : <Card>{body}</Card>;
 }

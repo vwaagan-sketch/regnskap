@@ -16,22 +16,22 @@ export async function getOrCreateInbox(sql: postgres.Sql, companyId: number): Pr
   return row;
 }
 
-export async function setAllowedSenders(sql: postgres.Sql, companyId: number, senders: string[]): Promise<void> {
+export async function setAllowedSenders(sql: postgres.Sql, companyId: number, senders: string[], actor = "bruker"): Promise<void> {
   await getOrCreateInbox(sql, companyId);
   await sql.begin(async (tx) => {
     await tx`UPDATE company_inbox SET allowed_senders = ${senders} WHERE company_id = ${companyId}`;
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${companyId}, 'bruker', 'save', 'company_inbox', ${String(companyId)}, ${tx.json({ allowed_senders: senders })})`;
+             VALUES (${companyId}, ${actor}, 'save', 'company_inbox', ${String(companyId)}, ${tx.json({ allowed_senders: senders })})`;
   });
 }
 
 /** Lager ny innboksadresse, f.eks. hvis den gamle har kommet på avveie. Den gamle slutter å virke straks. */
-export async function rotateInboxToken(sql: postgres.Sql, companyId: number): Promise<void> {
+export async function rotateInboxToken(sql: postgres.Sql, companyId: number, actor = "bruker"): Promise<void> {
   await getOrCreateInbox(sql, companyId);
   await sql.begin(async (tx) => {
     await tx`UPDATE company_inbox SET token = ${newInboxToken()} WHERE company_id = ${companyId}`;
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${companyId}, 'bruker', 'rotate', 'company_inbox', ${String(companyId)}, ${tx.json({})})`;
+             VALUES (${companyId}, ${actor}, 'rotate', 'company_inbox', ${String(companyId)}, ${tx.json({})})`;
   });
 }
 

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
 // /api/innboks er beskyttet med eget webhook-passord (se src/app/api/innboks).
-const PUBLIC_PATHS = ["/logg-inn", "/api/helse", "/api/innboks"];
+const PUBLIC_PATHS = ["/logg-inn", "/registrer", "/invitasjon", "/api/helse", "/api/innboks"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

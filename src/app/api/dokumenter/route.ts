@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiContext } from "@/db/context";
+import { apiContext, apiErrorStatus } from "@/db/context";
 import { kindFor, storeDocument } from "@/db/document-repo";
 import { jsonError, readUpload, today } from "@/lib/http";
 
@@ -7,9 +7,9 @@ import { jsonError, readUpload, today } from "@/lib/http";
 export async function POST(req: Request) {
   let ctx;
   try {
-    ctx = await apiContext();
+    ctx = await apiContext("skriv");
   } catch (e) {
-    return jsonError((e as Error).message, 503);
+    return jsonError((e as Error).message, apiErrorStatus(e));
   }
   const form = await req.formData();
   const files = form.getAll("filer").filter((f): f is File => f instanceof File && f.size > 0);
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
           filename: up.file.filename,
           title: String(form.get("tittel") ?? "").trim() || null,
           documentDate: today(),
-        }),
+        }, ctx.user.email),
       );
     }
   });

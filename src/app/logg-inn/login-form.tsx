@@ -9,8 +9,8 @@ export default function LoginForm({ next }: { next: string }) {
   return (
     <form action={action} className="grid gap-4">
       <input type="hidden" name="neste" value={next} />
-      <Field label="Brukernavn">
-        <input name="bruker" defaultValue={state.user} autoComplete="username" required className={inputClass} />
+      <Field label="E-post">
+        <input name="bruker" defaultValue={state.user} type="text" inputMode="email" autoComplete="username" required className={inputClass} />
       </Field>
       <Field label="Passord">
         <input name="passord" type="password" autoComplete="current-password" required className={inputClass} />

@@ -6,7 +6,7 @@ import { listProducts } from "@/db/product-repo";
 import InvoiceForm from "./invoice-form";
 
 export default async function NyFakturaPage() {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const [customers, products] = await Promise.all([listCustomers(sql, company.id), listProducts(sql, company.id, { onlyActive: true })]);
   return (
     <>

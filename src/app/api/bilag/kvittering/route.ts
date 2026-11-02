@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiContext } from "@/db/context";
+import { apiContext, apiErrorStatus } from "@/db/context";
 import { storeDocument } from "@/db/document-repo";
 import { insertEntry } from "@/db/ledger-repo";
 import { jsonError, readUpload } from "@/lib/http";
@@ -9,9 +9,9 @@ import { buildReceiptEntry, type ReceiptBooking } from "@/lib/receipt/booking";
 export async function POST(req: Request) {
   let ctx;
   try {
-    ctx = await apiContext();
+    ctx = await apiContext("skriv");
   } catch (e) {
-    return jsonError((e as Error).message, 503);
+    return jsonError((e as Error).message, apiErrorStatus(e));
   }
   const form = await req.formData();
   let booking: ReceiptBooking;
@@ -38,9 +38,9 @@ export async function POST(req: Request) {
           filename: up.file.filename,
           title: `${booking.supplierName} ${booking.date}`,
           documentDate: booking.date,
-        })
+        }, ctx.user.email)
       : null;
-    return insertEntry(tx, ctx.company.id, entry, "bruker", documentId);
+    return insertEntry(tx, ctx.company.id, entry, ctx.user.email, documentId);
   });
   return NextResponse.json(result);
 }

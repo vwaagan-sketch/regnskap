@@ -19,7 +19,7 @@ services:
           property: connectionString
       - key: SESSION_SECRET
         generateValue: true
-      - key: APP_USER
+      - key: APP_USER # brukes bare til å opprette første bruker
         sync: false
       - key: APP_PASSWORD
         sync: false

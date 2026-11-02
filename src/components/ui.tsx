@@ -89,7 +89,7 @@ export function Badge({ color = "gray", children }: { color?: keyof typeof badge
 }
 
 export function Money({ ore, className }: { ore: number | string | bigint; className?: string }) {
-  const n = Number(ore);
+  const n = Number(ore) || 0; // unngå «−0,00»
   return <span className={cx("tabular-nums", n < 0 && "text-rose-600", className)}>{formatKr(n)}</span>;
 }
 
