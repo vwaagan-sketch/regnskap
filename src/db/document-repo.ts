@@ -30,6 +30,11 @@ export interface NewDocument {
   title?: string | null;
 }
 
+/** Dokumenttype i arkivet ut fra filtypen. */
+export function kindFor(mediaType: string): string {
+  return mediaType.startsWith("image/") ? "image" : mediaType === "application/pdf" ? "pdf" : "file";
+}
+
 export async function storeDocument(tx: postgres.TransactionSql, companyId: number, d: NewDocument, actor = "bruker"): Promise<string> {
   const sha = createHash("sha256").update(d.content).digest("hex");
   const [doc] = await tx<{ id: string }[]>`
@@ -63,6 +68,8 @@ export interface DocumentListItem {
   retain_until: string;
   voucher_no: number | null;
   entry_description: string | null;
+  /** Avsender når dokumentet kom inn på e-post. */
+  email_from: string | null;
 }
 
 export async function listDocuments(
@@ -75,10 +82,12 @@ export async function listDocuments(
            to_char(d.document_date, 'YYYY-MM-DD') AS document_date,
            to_char(d.created_at, 'YYYY-MM-DD HH24:MI') AS created_at,
            to_char(d.retain_until, 'YYYY-MM-DD') AS retain_until,
-           e.voucher_no, e.description AS entry_description
+           e.voucher_no, e.description AS entry_description, m.from_address AS email_from
     FROM document d
     JOIN document_blob b ON b.document_id = d.id
     LEFT JOIN journal_entry e ON e.document_id = d.id
+    LEFT JOIN inbound_email_document md ON md.document_id = d.id
+    LEFT JOIN inbound_email m ON m.id = md.email_id
     WHERE d.company_id = ${companyId}
       ${filter === "ubokfort" ? sql`AND e.id IS NULL AND d.kind NOT IN ('invoice_pdf')` : sql``}
     ORDER BY d.created_at DESC

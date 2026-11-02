@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { actionContext, getAuth } from "@/db/context";
 import { companyFromForm, updateCompany, validateCompany } from "@/db/company-repo";
 import { addCompanyForUser, switchSessionCompany } from "@/db/user-repo";
+import { rotateInboxToken, setAllowedSenders } from "@/db/inbox-repo";
+import { parseAllowedSenders } from "@/lib/inbound/message";
 
 export interface FirmaState {
   ok: boolean;
@@ -82,4 +84,33 @@ export async function lookupOrgNo(orgNo: string): Promise<BrregResult | { error:
   } catch {
     return { error: "Kunne ikke nå Brønnøysundregistrene akkurat nå" };
   }
+}
+
+export interface InboxState {
+  ok: boolean;
+  error: string | null;
+}
+
+/** Lagrer hvem som får sende bilag til firmaets innboksadresse. */
+export async function saveAllowedSenders(_prev: InboxState, form: FormData): Promise<InboxState> {
+  const { senders, invalid } = parseAllowedSenders(String(form.get("allowed_senders") ?? ""));
+  if (invalid.length) return { ok: false, error: `Ugyldig e-postadresse: ${invalid.join(", ")}` };
+  const { ctx, error } = await actionContext("admin");
+  if (!ctx) return { ok: false, error };
+  try {
+    await setAllowedSenders(ctx.sql, ctx.company.id, senders, ctx.user.email);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  revalidatePath("/firma");
+  return { ok: true, error: null };
+}
+
+/** Lager ny innboksadresse. Den gamle slutter å virke. */
+export async function newInboxAddress(): Promise<void> {
+  const { ctx } = await actionContext("admin");
+  if (!ctx) return;
+  await rotateInboxToken(ctx.sql, ctx.company.id, ctx.user.email);
+  revalidatePath("/firma");
+  revalidatePath("/arkiv");
 }

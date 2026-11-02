@@ -25,6 +25,10 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: INNBOKS_ADRESSE # Postmark inbound-adresse, se README
+        sync: false
+      - key: INNBOKS_WEBHOOK_PASSORD
+        sync: false
 
 databases:
   - name: regnskap-db
