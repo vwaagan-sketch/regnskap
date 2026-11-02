@@ -17,6 +17,7 @@ Plan, lovkrav og veikart: se prosjektdokumentet «Faktura- og regnskapsprogram: 
 - **EHF:** hver faktura og kreditnota kan lastes ned som EHF (Peppol BIS Billing 3.0).
 - **Eksport:** SAF-T Regnskap 1.30 per år eller måned, og full sikkerhetskopi (ZIP med SAF-T, alle bilag, fakturaer og revisjonslogg).
 - **Saldobalanse** per år.
+- **Bank:** importer kontoutskrift som CAMT.053 (XML) eller CSV fra nettbanken. Programmet foreslår avstemming mot kundefakturaer (KID, fakturanummer, beløp) og bokførte bilag (samme beløp, nær dato). Sikre forslag godkjennes samlet; resten bokføres direkte fra banklinjen med kontoutskriften som vedlegg. Avstemmingsrapporten viser saldo i banken mot konto 1920 og hva differansen består av. Automatisk henting fra banken (PSD2) krever avtale med en tilbyder og kommer senere.
 
 ### Lovkrav: dette er dekket, og dette gjenstår
 
