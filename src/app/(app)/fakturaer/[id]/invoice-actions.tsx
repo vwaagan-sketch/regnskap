@@ -2,14 +2,14 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, Printer, Undo2 } from "lucide-react";
+import { Banknote, FileCode2, Printer, Undo2 } from "lucide-react";
 import { Alert, Button, Card, Field, inputClass } from "@/components/ui";
 import { oreToInput } from "@/lib/money";
 import { creditInvoiceAction, paymentAction, type PaymentState } from "../actions";
 
 const todayIso = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(new Date());
 
-export default function InvoiceActions({ id, isCredit, canCredit, openOre }: { id: number; isCredit: boolean; canCredit: boolean; openOre: number }) {
+export default function InvoiceActions({ id, isCredit, canCredit, openOre, ehf }: { id: number; isCredit: boolean; canCredit: boolean; openOre: number; ehf: boolean }) {
   const router = useRouter();
   const [payState, payAction, paying] = useActionState(paymentAction, {} as PaymentState);
   const [creditError, setCreditError] = useState<string | null>(null);
@@ -28,6 +28,13 @@ export default function InvoiceActions({ id, isCredit, canCredit, openOre }: { i
     <>
       <Card className="grid gap-2 p-4">
         <Button onClick={() => window.print()}><Printer className="h-4 w-4" /> Skriv ut / lagre PDF</Button>
+        {ehf ? (
+          <a href={`/api/fakturaer/${id}/ehf`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50">
+            <FileCode2 className="h-4 w-4" /> Last ned EHF
+          </a>
+        ) : (
+          <p className="text-xs text-slate-500">EHF krever at kunden har organisasjonsnummer.</p>
+        )}
         {canCredit && <Button variant="danger" onClick={credit} disabled={crediting}><Undo2 className="h-4 w-4" /> Krediter</Button>}
         {creditError && <Alert kind="error">{creditError}</Alert>}
       </Card>

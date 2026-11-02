@@ -7,6 +7,13 @@ import { storeDocument, listDocuments } from "@/db/document-repo";
 import { buildReceiptEntry } from "@/lib/receipt/booking";
 import { createAccount, listAccounts, updateAccount } from "@/db/account-repo";
 import { listProducts, saveProduct } from "@/db/product-repo";
+import { accountBalances, customerBalances, vatLines } from "@/db/report-repo";
+import { settleVat } from "@/db/vat-repo";
+import { exportSaft } from "@/db/saft-repo";
+import { buildBackup } from "@/db/backup-repo";
+import { buildVatReport } from "@/lib/vat-report";
+import { unzipSync, strFromU8 } from "fflate";
+import { execFileSync } from "node:child_process";
 
 const url = process.env.DATABASE_URL;
 const d = url ? describe : describe.skip;
@@ -102,5 +109,41 @@ d("fakturaflyt mot database", () => {
 
     await updateAccount(sql, company.id, "3050", { name: "Salg kurs og opplæring", vat_category: "high", active: false });
     expect((await listAccounts(sql, company.id, { onlyActive: true })).some((a) => a.number === "3050")).toBe(false);
+  });
+
+  it("lager rapporter, MVA-oppgjør, SAF-T og sikkerhetskopi som stemmer", async () => {
+    const bal = await accountBalances(sql, company.id, "2026-01-01", "2026-12-31");
+    expect(bal.reduce((s, r) => s + r.closingOre, 0)).toBe(0);
+    const ar = bal.find((r) => r.number === "1500")!.closingOre;
+    const cust = await customerBalances(sql, company.id, "2026-01-01", "2026-12-31");
+    expect(cust.reduce((s, r) => s + r.closingOre, 0)).toBe(ar);
+
+    const report = buildVatReport(await vatLines(sql, company.id, "2026-11-01", "2026-12-31"));
+    expect(report.payableOre).toBe(report.outputOre - report.inputOre);
+    expect(report.outputOre).toBeGreaterThan(0);
+    await settleVat(sql, company.id, 2026, "6", "test");
+    await expect(settleVat(sql, company.id, 2026, "6", "test")).rejects.toThrow(/allerede/);
+    const after = await accountBalances(sql, company.id, "2026-01-01", "2026-12-31");
+    for (const a of ["2700", "2701", "2702", "2710"]) expect(after.find((r) => r.number === a)?.closingOre ?? 0).toBe(0);
+    expect(after.find((r) => r.number === "2740")!.closingOre).toBe(-report.payableOre);
+
+    const xml = await exportSaft(sql, company, { year: 2026, contactName: "Ola Nordmann" });
+    expect(xml).toContain("<CustomerID>");
+    const debit = Number(xml.match(/<TotalDebit>([\d.]+)</)![1]);
+    const credit = Number(xml.match(/<TotalCredit>([\d.]+)</)![1]);
+    expect(debit).toBe(credit);
+    try {
+      execFileSync("xmllint", ["--noout", "-"], { input: xml });
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
+    }
+
+    const zip = unzipSync(await buildBackup(sql, company, "Ola Nordmann"));
+    const names = Object.keys(zip);
+    expect(names).toContain("LESMEG.txt");
+    expect(names).toContain("saft/SAF-T_999888777_2026.xml");
+    expect(names.some((n) => n.startsWith("bilag/2026/bilag-"))).toBe(true);
+    expect(names.some((n) => n.startsWith("fakturaer/ehf/faktura-"))).toBe(true);
+    expect(strFromU8(zip["bilag/oversikt.csv"])).toContain("2031-12-31");
   });
 });
