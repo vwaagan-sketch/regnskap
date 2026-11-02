@@ -4,9 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Camera, CheckCircle2, Loader2, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { Alert, Button, ButtonLink, Card, Field, cx, inputClass } from "@/components/ui";
-import { ACCOUNT_NAMES } from "@/lib/accounts";
 import { formatKr, oreToInput, parseKr } from "@/lib/money";
-import { EXPENSE_ACCOUNTS, MAX_ROUNDING_ORE } from "@/lib/receipt/booking";
+import { MAX_ROUNDING_ORE } from "@/lib/receipt/booking";
 import type { ReceiptData } from "@/lib/receipt/scan";
 
 interface VatRow { rate: string; base: string; vat: string }
@@ -21,21 +20,21 @@ const empty = (): FormState => ({
   expenseAccount: "6800", total: "", paid: true, vatLines: [{ rate: "25", base: "", vat: "" }],
 });
 
-function fromScan(d: ReceiptData): FormState {
+function fromScan(d: ReceiptData, accounts: { number: string }[]): FormState {
   return {
     supplierName: d.supplierName ?? "",
     supplierOrgNo: d.supplierOrgNo ?? "",
     documentNumber: d.documentNumber ?? "",
     date: d.issueDate ?? today(),
     description: d.description ?? "",
-    expenseAccount: EXPENSE_ACCOUNTS.includes(d.suggestedAccount) ? d.suggestedAccount : "7790",
+    expenseAccount: accounts.some((a) => a.number === d.suggestedAccount) ? d.suggestedAccount : "7790",
     total: oreToInput(d.totalInclVatOre),
     paid: d.documentType !== "invoice",
     vatLines: d.vatLines.map((l) => ({ rate: String(l.ratePercent), base: oreToInput(l.baseOre), vat: oreToInput(l.vatOre) })),
   };
 }
 
-export default function ReceiptFlow({ vatRegistered }: { vatRegistered: boolean }) {
+export default function ReceiptFlow({ vatRegistered, accounts }: { vatRegistered: boolean; accounts: { number: string; name: string }[] }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -63,7 +62,7 @@ export default function ReceiptFlow({ vatRegistered }: { vatRegistered: boolean 
       const res = await fetch("/api/receipts/scan", { method: "POST", body });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Kunne ikke tolke bildet");
-      setForm(fromScan(json.data));
+      setForm(fromScan(json.data, accounts));
       setScanInfo({ warnings: json.warnings, notes: json.data.notes });
     } catch (e) {
       setError(`${(e as Error).message}. Fyll ut feltene selv.`);
@@ -219,7 +218,7 @@ export default function ReceiptFlow({ vatRegistered }: { vatRegistered: boolean 
               <Field label="Hva ble kjøpt?" className="sm:col-span-2"><input className={inputClass} value={form.description} onChange={(e) => set("description", e.target.value)} /></Field>
               <Field label="Kostnadskonto" className="sm:col-span-2">
                 <select className={inputClass} value={form.expenseAccount} onChange={(e) => set("expenseAccount", e.target.value)}>
-                  {EXPENSE_ACCOUNTS.map((a) => <option key={a} value={a}>{a} {ACCOUNT_NAMES[a]}</option>)}
+                  {accounts.map((a) => <option key={a.number} value={a.number}>{a.number} {a.name}</option>)}
                 </select>
               </Field>
             </div>

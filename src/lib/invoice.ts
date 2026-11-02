@@ -24,6 +24,10 @@ export interface InvoiceLineInput {
   quantity: number; // kan ha desimaler, f.eks. 1.5 timer
   unitPriceOre: number; // eks. MVA
   vatCategory: VatCategory;
+  /** Inntektskonto (3xxx). Standard: 3000 med MVA, 3100 uten. */
+  account?: string;
+  /** Enhet, f.eks. "stk", "timer". */
+  unit?: string;
 }
 
 export interface InvoiceInput {
@@ -91,6 +95,7 @@ export function validateInvoice(input: InvoiceInput): string[] {
     if (!l.description.trim()) errors.push(`Linje ${i + 1}: mangler beskrivelse av ytelsen`);
     if (!(l.quantity > 0)) errors.push(`Linje ${i + 1}: antall må være større enn 0`);
     if (!Number.isSafeInteger(l.unitPriceOre)) errors.push(`Linje ${i + 1}: pris må være i hele øre`);
+    if (l.account && !(l.account >= "3000" && l.account < "4000")) errors.push(`Linje ${i + 1}: inntektskonto må være i 3000-serien`);
   });
   if (input.kind === "credit_note" && !input.creditsInvoiceNumber) {
     errors.push("Kreditnota må vise til fakturaen som krediteres");
@@ -123,10 +128,19 @@ export function toJournalEntry(input: InvoiceInput): JournalEntryDraft {
   const lines: JournalLine[] = [
     { account: ACCOUNTS.customerReceivables, amount: totals.grossOre, description: input.buyer.name },
   ];
+  // Inntekt per (konto, MVA-sats), MVA per sats.
+  const revenue = new Map<string, { account: string; cat: VatCategory; amount: number }>();
+  for (const l of totals.lines) {
+    const account = l.account ?? (l.vatCategory === "zero" || l.vatCategory === "exempt" ? ACCOUNTS.salesExempt : ACCOUNTS.salesTaxable);
+    const key = `${account}|${l.vatCategory}`;
+    const r = revenue.get(key) ?? { account, cat: l.vatCategory, amount: 0 };
+    r.amount += l.netOre;
+    revenue.set(key, r);
+  }
+  for (const r of revenue.values()) {
+    if (r.amount !== 0) lines.push({ account: r.account, amount: -r.amount, vatCode: OUTPUT_VAT_CODE[r.cat] });
+  }
   for (const [cat, bucket] of Object.entries(totals.vatByCategory) as [VatCategory, { baseOre: number; vatOre: number }][]) {
-    if (bucket.baseOre === 0) continue;
-    const revenueAccount = cat === "zero" || cat === "exempt" ? ACCOUNTS.salesExempt : ACCOUNTS.salesTaxable;
-    lines.push({ account: revenueAccount, amount: -bucket.baseOre, vatCode: OUTPUT_VAT_CODE[cat] });
     const vatAccount = OUTPUT_VAT_ACCOUNT[cat];
     if (vatAccount && bucket.vatOre !== 0) {
       lines.push({ account: vatAccount, amount: -bucket.vatOre, vatCode: OUTPUT_VAT_CODE[cat] });

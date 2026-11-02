@@ -79,7 +79,7 @@ export default async function FakturaPage({ params }: { params: Promise<{ id: st
               {totals.lines.map((l, i) => (
                 <tr key={i} className="border-b border-slate-100">
                   <td className="py-2.5">{l.description}</td>
-                  <td className="py-2.5 text-right tabular-nums">{String(l.quantity).replace(".", ",")}</td>
+                  <td className="py-2.5 text-right tabular-nums">{String(l.quantity).replace(".", ",")}{l.unit ? ` ${l.unit}` : ""}</td>
                   <td className="py-2.5 text-right tabular-nums">{formatKr(l.unitPriceOre)}</td>
                   <td className="py-2.5 text-right">{VAT_RATES[l.vatCategory]} %</td>
                   <td className="py-2.5 text-right tabular-nums">{formatKr(l.netOre)}</td>

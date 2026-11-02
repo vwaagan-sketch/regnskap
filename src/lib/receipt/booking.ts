@@ -32,13 +32,15 @@ const RATE_TO_CATEGORY: Record<number, keyof typeof INPUT_VAT_CODE | undefined> 
 export const MAX_ROUNDING_ORE = 100;
 
 export const EXPENSE_ACCOUNTS = Object.keys(ACCOUNT_NAMES).filter((a) => a >= "4000" && a < "8000");
+/** Kostnadskonto: 4000–7999 (varekost, lønn og andre driftskostnader). */
+export const isExpenseAccount = (a: string) => /^[4-7]\d{3}$/.test(a);
 
 export function validateReceiptBooking(r: ReceiptBooking): string[] {
   const errors: string[] = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date)) errors.push("Dato mangler eller er ugyldig");
   if (!r.supplierName.trim()) errors.push("Leverandør mangler");
   if (!r.description.trim()) errors.push("Beskrivelse mangler");
-  if (!EXPENSE_ACCOUNTS.includes(r.expenseAccount)) errors.push("Velg en gyldig kostnadskonto");
+  if (!isExpenseAccount(r.expenseAccount)) errors.push("Velg en gyldig kostnadskonto");
   if (!Number.isSafeInteger(r.totalOre) || r.totalOre <= 0) errors.push("Totalbeløpet må være større enn 0");
   for (const l of r.vatLines) {
     if (![25, 15, 12, 0].includes(l.ratePercent)) errors.push(`Ukjent MVA-sats ${l.ratePercent} %`);

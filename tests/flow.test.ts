@@ -5,6 +5,8 @@ import { createCustomer, issueInvoice, registerPayment, listInvoices } from "@/d
 import { insertEntry, trialBalanceForYear } from "@/db/ledger-repo";
 import { storeDocument, listDocuments } from "@/db/document-repo";
 import { buildReceiptEntry } from "@/lib/receipt/booking";
+import { createAccount, listAccounts, updateAccount } from "@/db/account-repo";
+import { listProducts, saveProduct } from "@/db/product-repo";
 
 const url = process.env.DATABASE_URL;
 const d = url ? describe : describe.skip;
@@ -73,5 +75,32 @@ d("fakturaflyt mot database", () => {
     expect(docs[0]).toMatchObject({ voucher_no: res.voucherNo, retain_until: "2031-12-31" });
     expect(await listDocuments(sql, company.id, "ubokfort")).toHaveLength(0);
     await expect(sql`DELETE FROM document_blob`).rejects.toThrow(/uforanderlig/);
+  });
+
+  it("oppretter egen konto og vare, og fakturerer varen på varens konto", async () => {
+    await createAccount(sql, company.id, { number: "3050", name: "Salg kurs", vat_category: "high" });
+    await expect(createAccount(sql, company.id, { number: "3050", name: "Dobbel", vat_category: null })).rejects.toThrow();
+    await expect(createAccount(sql, company.id, { number: "9000", name: "Ugyldig", vat_category: null })).rejects.toThrow();
+    const id = await saveProduct(sql, company.id, {
+      product_no: "", name: "Kursdag", description: null, unit: "dag", price_ore: 800000, vat_category: "high", revenue_account: "3050",
+    });
+    const [p] = await listProducts(sql, company.id);
+    expect(p).toMatchObject({ product_no: "1001", name: "Kursdag", unit: "dag", revenue_account: "3050" });
+    expect(id).toBeTruthy();
+
+    const customerId = await createCustomer(sql, company.id, {
+      name: "Kursdeltaker AS", org_no: null, email: null, address: "Vei 3", postal_code: "7010", city: "Trondheim",
+    });
+    await issueInvoice(sql, company, {
+      customerId, issueDate: "2026-11-06", dueDate: "2026-11-20", deliveryDate: "2026-11-06",
+      lines: [{ description: "Kursdag", quantity: 2, unitPriceOre: 800000, vatCategory: "high", account: "3050", unit: "dag" }],
+    });
+    const acc = (await listAccounts(sql, company.id)).find((a) => a.number === "3050")!;
+    expect(Number(acc.balance_ore)).toBe(-1600000);
+    expect(acc.used).toBe(true);
+    await expect(sql`DELETE FROM account WHERE company_id = ${company.id} AND number = '3050'`).rejects.toThrow();
+
+    await updateAccount(sql, company.id, "3050", { name: "Salg kurs og opplæring", vat_category: "high", active: false });
+    expect((await listAccounts(sql, company.id, { onlyActive: true })).some((a) => a.number === "3050")).toBe(false);
   });
 });

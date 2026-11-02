@@ -4,16 +4,17 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Send, Trash2 } from "lucide-react";
 import { Alert, Button, Card, Field, cx, inputClass } from "@/components/ui";
-import { formatKr, parseKr } from "@/lib/money";
+import { formatKr, oreToInput, parseKr } from "@/lib/money";
 import { vatOf, type VatCategory } from "@/lib/vat";
 import { createInvoiceAction } from "../actions";
 
-interface Line { description: string; quantity: string; price: string; vat: VatCategory }
-const blank = (): Line => ({ description: "", quantity: "1", price: "", vat: "high" });
+interface Line { productId: string; description: string; quantity: string; price: string; vat: VatCategory; account?: string; unit?: string }
+export interface ProductOption { id: number; name: string; description: string | null; unit: string; priceOre: number; vat: VatCategory; account: string }
+const blank = (): Line => ({ productId: "", description: "", quantity: "1", price: "", vat: "high" });
 const iso = (d: Date) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Oslo" }).format(d);
 const VAT_LABEL: Record<VatCategory, string> = { high: "25 %", medium: "15 %", low: "12 %", zero: "0 % (fritatt)", exempt: "Unntatt" };
 
-export default function InvoiceForm({ customers, vatRegistered }: { customers: { id: number; name: string }[]; vatRegistered: boolean }) {
+export default function InvoiceForm({ customers, vatRegistered, products }: { customers: { id: number; name: string }[]; vatRegistered: boolean; products: ProductOption[] }) {
   const router = useRouter();
   const [customerId, setCustomerId] = useState(String(customers[0]?.id ?? ""));
   const [issueDate, setIssueDate] = useState(iso(new Date()));
@@ -43,6 +44,18 @@ export default function InvoiceForm({ customers, vatRegistered }: { customers: {
   }, [lines, vatRegistered]);
 
   const update = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+  const pickProduct = (i: number, id: string) => {
+    const p = products.find((x) => String(x.id) === id);
+    if (!p) return update(i, { productId: "", account: undefined, unit: undefined });
+    update(i, {
+      productId: id,
+      description: p.description ? `${p.name} – ${p.description}` : p.name,
+      price: oreToInput(p.priceOre),
+      vat: p.vat,
+      account: p.account,
+      unit: p.unit,
+    });
+  };
 
   function submit() {
     setError(null);
@@ -55,6 +68,8 @@ export default function InvoiceForm({ customers, vatRegistered }: { customers: {
           quantity: Number(l.quantity.replace(",", ".")),
           unitPriceOre: parseKr(l.price) ?? NaN,
           vatCategory: vatRegistered ? l.vat : "exempt",
+          account: l.account,
+          unit: l.unit,
         })),
       });
       if (r.error) setError(r.error);
@@ -84,15 +99,22 @@ export default function InvoiceForm({ customers, vatRegistered }: { customers: {
 
       <Card title="Linjer" action={<button type="button" onClick={() => setLines([...lines, blank()])} className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600"><Plus className="h-4 w-4" /> Linje</button>}>
         <div className="grid gap-3 p-5">
-          <div className="hidden grid-cols-[minmax(0,3fr)_5rem_8rem_8rem_7rem_2rem] gap-2 text-xs font-medium text-slate-500 md:grid">
-            <span>Beskrivelse</span><span className="text-right">Antall</span><span className="text-right">Pris eks. MVA</span><span>MVA</span><span className="text-right">Sum</span><span />
+          <div className="hidden grid-cols-[10rem_minmax(0,3fr)_5rem_8rem_7rem_7rem_2rem] gap-2 text-xs font-medium text-slate-500 md:grid">
+            <span>Vare</span><span>Beskrivelse</span><span className="text-right">Antall</span><span className="text-right">Pris eks. MVA</span><span>MVA</span><span className="text-right">Sum</span><span />
           </div>
           {lines.map((l, i) => {
             const sum = Math.round((parseKr(l.price) ?? 0) * (Number(l.quantity.replace(",", ".")) || 0));
             return (
-              <div key={i} className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2 md:grid-cols-[minmax(0,3fr)_5rem_8rem_8rem_7rem_2rem] md:bg-transparent md:p-0">
+              <div key={i} className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2 md:grid-cols-[10rem_minmax(0,3fr)_5rem_8rem_7rem_7rem_2rem] md:bg-transparent md:p-0">
+                <select className={cx(inputClass, "col-span-2 md:col-span-1")} value={l.productId} onChange={(e) => pickProduct(i, e.target.value)} aria-label="Velg vare">
+                  <option value="">{products.length ? "Fritekst" : "Ingen varer"}</option>
+                  {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
                 <input className={cx(inputClass, "col-span-2 md:col-span-1")} placeholder="Hva leveres?" value={l.description} onChange={(e) => update(i, { description: e.target.value })} />
-                <input className={cx(inputClass, "text-right")} inputMode="decimal" value={l.quantity} onChange={(e) => update(i, { quantity: e.target.value })} />
+                <div className="relative">
+                  <input className={cx(inputClass, "text-right", l.unit && "pr-10")} inputMode="decimal" value={l.quantity} onChange={(e) => update(i, { quantity: e.target.value })} aria-label="Antall" />
+                  {l.unit && <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-slate-400">{l.unit}</span>}
+                </div>
                 <input className={cx(inputClass, "text-right")} inputMode="decimal" placeholder="0,00" value={l.price} onChange={(e) => update(i, { price: e.target.value })} />
                 <select className={inputClass} disabled={!vatRegistered} value={l.vat} onChange={(e) => update(i, { vat: e.target.value as VatCategory })}>
                   {(Object.keys(VAT_LABEL) as VatCategory[]).map((c) => <option key={c} value={c}>{VAT_LABEL[c]}</option>)}

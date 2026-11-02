@@ -95,3 +95,19 @@ describe("kvitteringskontroll", () => {
     expect(w.length).toBe(2);
   });
 });
+
+describe("faktura med egne inntektskonti", () => {
+  it("fører inntekt på varens konto og MVA per sats", () => {
+    const e = toJournalEntry({
+      ...base,
+      lines: [
+        { description: "Vare A", quantity: 1, unitPriceOre: 10000, vatCategory: "high", account: "3010" },
+        { description: "Vare B", quantity: 1, unitPriceOre: 20000, vatCategory: "high" },
+      ],
+    });
+    expect(e.lines.find((l) => l.account === "3010")?.amount).toBe(-10000);
+    expect(e.lines.find((l) => l.account === "3000")?.amount).toBe(-20000);
+    expect(e.lines.find((l) => l.account === "2700")?.amount).toBe(-7500);
+    expect(validateInvoice({ ...base, lines: [{ ...base.lines[0], account: "1920" }] })).toContain("Linje 1: inntektskonto må være i 3000-serien");
+  });
+});

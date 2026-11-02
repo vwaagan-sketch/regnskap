@@ -7,7 +7,7 @@ export default async function NyttBilagPage({ searchParams }: { searchParams: Pr
   const { sql, company } = await requireContext();
   const { dokument } = await searchParams;
   const accounts = await sql<{ number: string; name: string }[]>`
-    SELECT number, name FROM account WHERE company_id = ${company.id} ORDER BY number`;
+    SELECT number, name FROM account WHERE company_id = ${company.id} AND active ORDER BY number`;
   const docs = await listDocuments(sql, company.id, "ubokfort");
   return (
     <>
