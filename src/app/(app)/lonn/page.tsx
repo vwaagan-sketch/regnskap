@@ -11,7 +11,7 @@ const monthName = (period: string) =>
   new Intl.DateTimeFormat("nb-NO", { month: "long", year: "numeric" }).format(new Date(`${period}-15T12:00:00`));
 
 export default async function LonnPage() {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const now = today();
   const year = Number(now.slice(0, 4));
   const [settings, runs, months, meldinger, employees, holiday] = await Promise.all([

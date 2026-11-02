@@ -6,7 +6,7 @@ import { getPayrollSettings, listEmployees } from "@/db/payroll-repo";
 import RunForm from "./run-form";
 
 export default async function NyLonnskjoringPage() {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const [settings, employees] = await Promise.all([getPayrollSettings(sql, company.id), listEmployees(sql, company.id)]);
   return (
     <>

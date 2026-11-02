@@ -6,7 +6,7 @@ import { getPayrollSettings } from "@/db/payroll-repo";
 import SettingsForm from "./settings-form";
 
 export default async function LonnInnstillingerPage() {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const settings = await getPayrollSettings(sql, company.id);
   return (
     <>

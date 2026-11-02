@@ -11,7 +11,7 @@ import RunActions from "./run-actions";
 const fmtQty = (q: number) => String(q).replace(".", ",");
 
 export default async function LonnskjoringPage({ params }: { params: Promise<{ id: string }> }) {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const { id } = await params;
   const data = await getRun(sql, company.id, Number(id));
   if (!data) notFound();

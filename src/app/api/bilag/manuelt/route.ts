@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiContext } from "@/db/context";
+import { apiContext, apiErrorStatus } from "@/db/context";
 import { isDocumentLinked, storeDocument } from "@/db/document-repo";
 import { insertEntry } from "@/db/ledger-repo";
 import { jsonError, readUpload } from "@/lib/http";
@@ -9,9 +9,9 @@ import { buildManualEntry, type ManualEntryInput } from "@/lib/manual-entry";
 export async function POST(req: Request) {
   let ctx;
   try {
-    ctx = await apiContext();
+    ctx = await apiContext("skriv");
   } catch (e) {
-    return jsonError((e as Error).message, 503);
+    return jsonError((e as Error).message, apiErrorStatus(e));
   }
   const form = await req.formData();
   let input: ManualEntryInput;
@@ -41,14 +41,14 @@ export async function POST(req: Request) {
           filename: up.file.filename,
           title: input.description,
           documentDate: input.date,
-        });
+        }, ctx.user.email);
       } else if (archiveId) {
         const [doc] = await tx`SELECT id FROM document WHERE id = ${archiveId} AND company_id = ${ctx.company.id}`;
         if (!doc) throw new Error("Fant ikke dokumentet i arkivet");
         if (await isDocumentLinked(tx, archiveId)) throw new Error("Dokumentet er allerede brukt på et annet bilag");
         documentId = archiveId;
       }
-      return insertEntry(tx, ctx.company.id, entry, "bruker", documentId);
+      return insertEntry(tx, ctx.company.id, entry, ctx.user.email, documentId);
     });
     return NextResponse.json(result);
   } catch (e) {

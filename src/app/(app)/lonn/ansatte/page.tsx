@@ -8,7 +8,7 @@ import { today } from "@/lib/http";
 import EmployeeForm from "./employee-form";
 
 export default async function AnsattePage() {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const employees = await listEmployees(sql, company.id);
   const period = today().slice(0, 7);
   return (

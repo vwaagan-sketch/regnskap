@@ -6,7 +6,7 @@ import { today } from "@/lib/http";
 const MONTHS = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
 
 export default async function ExportPage() {
-  const { sql, company } = await requireContext();
+  const { sql, company, user, role } = await requireContext();
   const [stats] = await sql<{ entries: number; documents: number; invoices: number; first_year: number | null; last_year: number | null; bytes: string }[]>`
     SELECT
       (SELECT count(*)::int FROM journal_entry WHERE company_id = ${company.id}) AS entries,
@@ -41,7 +41,7 @@ export default async function ExportPage() {
               </Field>
             </div>
             <Field label="Kontaktperson" hint="Navnet står i filhodet som kontakt for regnskapet">
-              <input name="kontakt" required placeholder="Fornavn Etternavn" className={inputClass} />
+              <input name="kontakt" required defaultValue={user.name} placeholder="Fornavn Etternavn" className={inputClass} />
             </Field>
             <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500">
               <FileCode2 className="h-4 w-4" /> Last ned SAF-T
@@ -49,18 +49,18 @@ export default async function ExportPage() {
           </form>
         </Card>
 
-        <Card title="Full sikkerhetskopi">
+        {role === "admin" && <Card title="Full sikkerhetskopi">
           <form action="/api/eksport/sikkerhetskopi" method="get" className="grid gap-4 p-5">
             <p className="text-sm text-slate-600">
               En ZIP-fil med SAF-T for hvert år, alle bilag i originalformat, alle fakturaer (også som EHF) og revisjonsloggen.
               Filen kan leses uten dette programmet. Ta en kopi minst én gang i måneden, og lagre den et annet sted enn her.
             </p>
-            <Field label="Kontaktperson"><input name="kontakt" required placeholder="Fornavn Etternavn" className={inputClass} /></Field>
+            <Field label="Kontaktperson"><input name="kontakt" required defaultValue={user.name} placeholder="Fornavn Etternavn" className={inputClass} /></Field>
             <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-50">
               <Download className="h-4 w-4" /> Last ned sikkerhetskopi
             </button>
           </form>
-        </Card>
+        </Card>}
 
         <Card title="Oppbevaring" className="lg:col-span-2">
           <div className="grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">

@@ -1,6 +1,6 @@
 /**
- * Enkel innlogging for én bruker (eget firma). Sesjonen er en HMAC-signert
- * informasjonskapsel. Bruker Web Crypto slik at den også virker i middleware.
+ * Innloggingsøkten er en HMAC-signert informasjonskapsel med øktens id. Middleware sjekker
+ * bare signaturen (Web Crypto), mens serveren slår opp økten, brukeren og tilgangen i databasen.
  */
 export const SESSION_COOKIE = "regnskap_sesjon";
 export const SESSION_TTL_SECONDS = 60 * 60 * 12; // 12 timer
@@ -47,7 +47,7 @@ export async function verifySessionToken(token: string | undefined, secret: stri
   return decodeURIComponent(user);
 }
 
-/** Sjekker brukernavn og passord mot miljøvariablene APP_USER og APP_PASSWORD. */
+/** Sjekker mot APP_USER og APP_PASSWORD. Brukes bare til å opprette den første brukeren. */
 export function checkCredentials(user: string, password: string): boolean {
   const expectedUser = process.env.APP_USER;
   const expectedPassword = process.env.APP_PASSWORD;
@@ -55,4 +55,9 @@ export function checkCredentials(user: string, password: string): boolean {
   const okUser = timingSafeEqual(user.trim().toLowerCase(), expectedUser.trim().toLowerCase());
   const okPassword = timingSafeEqual(password, expectedPassword);
   return okUser && okPassword;
+}
+
+/** Godtar bare interne stier som videresending etter innlogging. */
+export function safeNext(next: string): string {
+  return next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : "/";
 }

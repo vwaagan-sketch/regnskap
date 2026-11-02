@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireContext } from "@/db/context";
+import { actionContext } from "@/db/context";
 import {
   createAMelding, createEmployee, createRun, previewRun, registerPayout, reverseRun, savePayrollSettings, updateEmployee,
   type RunInput,
@@ -12,13 +12,15 @@ import type { AgaZone, CalculatedPayslip, EmployeeInput, TaxInput } from "@/lib/
 export interface FormState { ok: boolean; errors: string[] }
 
 export async function saveSettingsAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { ok: false, errors: [error] };
+  const { sql, company, user } = ctx;
   try {
     await savePayrollSettings(sql, company.id, {
       business_unit_org_no: String(form.get("business_unit_org_no") ?? "").replace(/\D/g, ""),
       aga_zone: String(form.get("aga_zone") ?? "") as AgaZone,
       holiday_pay_rate_bp: Number(form.get("holiday_pay_rate_bp")),
-    });
+    }, user.email);
   } catch (e) {
     return { ok: false, errors: [(e as Error).message] };
   }
@@ -56,13 +58,15 @@ function readEmployee(form: FormData): EmployeeInput | string {
 }
 
 export async function saveEmployeeAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { ok: false, errors: [error] };
+  const { sql, company, user } = ctx;
   const input = readEmployee(form);
   if (typeof input === "string") return { ok: false, errors: [input] };
   const id = Number(form.get("id") || 0);
   try {
-    if (id) await updateEmployee(sql, company.id, id, input);
-    else await createEmployee(sql, company.id, input);
+    if (id) await updateEmployee(sql, company.id, id, input, user.email);
+    else await createEmployee(sql, company.id, input, user.email);
   } catch (e) {
     return { ok: false, errors: [(e as Error).message] };
   }
@@ -77,7 +81,9 @@ export interface PreviewResult {
 }
 
 export async function previewRunAction(input: RunInput): Promise<PreviewResult> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { error };
+  const { sql, company } = ctx;
   try {
     return { slips: await previewRun(sql, company.id, input) };
   } catch (e) {
@@ -86,9 +92,11 @@ export async function previewRunAction(input: RunInput): Promise<PreviewResult> 
 }
 
 export async function createRunAction(input: RunInput): Promise<{ id?: number; error?: string }> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { error };
+  const { sql, company, user } = ctx;
   try {
-    const r = await createRun(sql, company, input);
+    const r = await createRun(sql, company, input, user.email);
     revalidatePath("/lonn");
     return { id: r.id };
   } catch (e) {
@@ -97,10 +105,12 @@ export async function createRunAction(input: RunInput): Promise<{ id?: number; e
 }
 
 export async function payoutAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { ok: false, errors: [error] };
+  const { sql, company, user } = ctx;
   const id = Number(form.get("runId"));
   try {
-    await registerPayout(sql, company.id, id, String(form.get("date") ?? ""), form.get("transferTax") === "on");
+    await registerPayout(sql, company.id, id, String(form.get("date") ?? ""), form.get("transferTax") === "on", user.email);
   } catch (e) {
     return { ok: false, errors: [(e as Error).message] };
   }
@@ -110,9 +120,11 @@ export async function payoutAction(_prev: FormState, form: FormData): Promise<Fo
 }
 
 export async function reverseRunAction(runId: number, date: string): Promise<{ id?: number; error?: string }> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { error };
+  const { sql, company, user } = ctx;
   try {
-    const r = await reverseRun(sql, company.id, runId, date);
+    const r = await reverseRun(sql, company.id, runId, date, user.email);
     revalidatePath("/lonn");
     return { id: r.id };
   } catch (e) {
@@ -121,9 +133,11 @@ export async function reverseRunAction(runId: number, date: string): Promise<{ i
 }
 
 export async function createAMeldingAction(period: string): Promise<{ id?: number; error?: string }> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { error };
+  const { sql, company, user } = ctx;
   try {
-    const r = await createAMelding(sql, company, period);
+    const r = await createAMelding(sql, company, period, user.email);
     revalidatePath("/lonn");
     return { id: r.id };
   } catch (e) {

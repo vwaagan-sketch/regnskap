@@ -4,26 +4,95 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Archive, BarChart3, BookOpen, Building2, Camera, FileText, HardDriveDownload, LayoutDashboard, ListTree, LogOut, Menu, Package, Percent, Scale, Users, Wallet, X,
+  Archive, BarChart3, BookOpen, Building2, Camera, Check, ChevronsUpDown, FileText, HardDriveDownload, Landmark, LayoutDashboard, ListTree, LogOut, Menu,
+  Package, Percent, Plus, Scale, ShieldCheck, UserCircle, Users, Wallet, X,
 } from "lucide-react";
+import { can, ROLE_LABELS, type Access, type Role } from "@/lib/auth/roles";
 import { cx } from "./ui";
 
-export const NAV = [
+export interface NavCompany {
+  id: number;
+  name: string;
+  role: Role;
+}
+
+export interface NavProps {
+  user: { name: string; email: string };
+  company: NavCompany | null;
+  companies: NavCompany[];
+  logout: () => Promise<void>;
+  switchCompany: (form: FormData) => Promise<void>;
+}
+
+export const NAV: { href: string; label: string; icon: typeof Users; access?: Access }[] = [
   { href: "/", label: "Oversikt", icon: LayoutDashboard },
-  { href: "/kvittering", label: "Kvittering", icon: Camera },
+  { href: "/kvittering", label: "Kvittering", icon: Camera, access: "skriv" },
   { href: "/bilag", label: "Bilag", icon: BookOpen },
   { href: "/arkiv", label: "Arkiv", icon: Archive },
   { href: "/fakturaer", label: "Fakturaer", icon: FileText },
+  { href: "/bank", label: "Bank", icon: Landmark },
   { href: "/kunder", label: "Kunder", icon: Users },
   { href: "/varer", label: "Varer", icon: Package },
-  { href: "/lonn", label: "Lønn", icon: Wallet },
+  { href: "/lonn", label: "Lønn", icon: Wallet, access: "skriv" },
   { href: "/kontoplan", label: "Kontoplan", icon: ListTree },
   { href: "/rapporter", label: "Rapporter", icon: BarChart3 },
   { href: "/mva", label: "MVA", icon: Percent },
   { href: "/saldobalanse", label: "Saldobalanse", icon: Scale },
   { href: "/eksport", label: "Eksport", icon: HardDriveDownload },
-  { href: "/firma", label: "Firma", icon: Building2 },
+  { href: "/firma", label: "Firma", icon: Building2, access: "admin" },
+  { href: "/brukere", label: "Brukere", icon: ShieldCheck, access: "admin" },
 ];
+
+function visibleNav(company: NavCompany | null) {
+  if (!company) return [];
+  return NAV.filter((n) => !n.access || can(company.role, n.access));
+}
+
+/** Viser aktivt firma, og lar brukeren bytte firma, legge til firma og åpne profilen. */
+function CompanySwitcher({ user, company, companies, switchCompany, compact = false }: Omit<NavProps, "logout"> & { compact?: boolean }) {
+  return (
+    <details className="group relative">
+      <summary
+        className={cx(
+          "flex cursor-pointer list-none items-center gap-2.5 rounded-xl hover:bg-slate-50 [&::-webkit-details-marker]:hidden",
+          compact ? "px-1.5 py-1" : "px-3 py-2",
+        )}
+      >
+        <div className={cx("grid shrink-0 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 font-bold text-white", compact ? "h-7 w-7 text-xs" : "h-8 w-8 text-sm")}>
+          {(company?.name ?? "R").slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0 flex-1 text-left">
+          <p className={cx("truncate font-semibold text-slate-900", compact ? "max-w-[10rem] text-sm" : "text-sm")}>{company?.name ?? "Regnskap"}</p>
+          {!compact && <p className="truncate text-xs text-slate-500">{user.name}</p>}
+        </div>
+        <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />
+      </summary>
+      <div className="absolute left-0 z-30 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+        <p className="px-2.5 pt-1.5 pb-1 text-xs font-medium text-slate-400">Firma</p>
+        {companies.map((c) => (
+          <form key={c.id} action={switchCompany}>
+            <input type="hidden" name="companyId" value={c.id} />
+            <button className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-slate-50">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-slate-800">{c.name}</span>
+                <span className="block text-xs text-slate-400">{ROLE_LABELS[c.role]}</span>
+              </span>
+              {c.id === company?.id && <Check className="h-4 w-4 text-indigo-600" />}
+            </button>
+          </form>
+        ))}
+        <Link href="/firma/ny" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-50">
+          <Plus className="h-4 w-4" /> Legg til firma
+        </Link>
+        <div className="my-1 border-t border-slate-100" />
+        <Link href="/profil" className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-slate-600 hover:bg-slate-50">
+          <UserCircle className="h-4 w-4" />
+          <span className="min-w-0 flex-1 truncate">Min profil <span className="text-slate-400">· {user.email}</span></span>
+        </Link>
+      </div>
+    </details>
+  );
+}
 
 const MOBILE = ["/", "/kvittering", "/bilag", "/arkiv", "/fakturaer"];
 
@@ -31,19 +100,15 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function Sidebar({ companyName, logout }: { companyName: string | null; logout: () => Promise<void> }) {
+export function Sidebar({ logout, ...props }: NavProps) {
   const pathname = usePathname();
   return (
     <aside className="no-print fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
-      <div className="flex h-16 items-center gap-2.5 px-6">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-sm font-bold text-white">R</div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">Regnskap</p>
-          <p className="truncate text-xs text-slate-500">{companyName ?? "Ikke satt opp"}</p>
-        </div>
+      <div className="px-3 pt-3 pb-1">
+        <CompanySwitcher {...props} />
       </div>
       <nav className="flex-1 space-y-0.5 px-3 py-2">
-        {NAV.map(({ href, label, icon: Icon }) => (
+        {visibleNav(props.company).map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -66,11 +131,16 @@ export function Sidebar({ companyName, logout }: { companyName: string | null; l
   );
 }
 
-export function MobileNav() {
+export function MobileNav({ company }: { company: NavCompany | null }) {
   const pathname = usePathname();
+  const items = visibleNav(company).filter((n) => MOBILE.includes(n.href));
+  if (items.length === 0) return null;
   return (
-    <nav className="no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-      {NAV.filter((n) => MOBILE.includes(n.href)).map(({ href, label, icon: Icon }) => (
+    <nav
+      className="no-print fixed inset-x-0 bottom-0 z-20 grid border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+    >
+      {items.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}
@@ -84,18 +154,15 @@ export function MobileNav() {
   );
 }
 
-export function MobileTopBar({ logout }: { logout: () => Promise<void> }) {
+export function MobileTopBar({ logout, ...props }: NavProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
-  const more = NAV.filter((n) => !MOBILE.includes(n.href));
+  const more = visibleNav(props.company).filter((n) => !MOBILE.includes(n.href));
   return (
     <header className="no-print sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur lg:hidden">
-      <div className="flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-xs font-bold text-white">R</div>
-          <span className="text-sm font-semibold">Regnskap</span>
-        </div>
+      <div className="flex h-14 items-center justify-between gap-2 px-2">
+        <CompanySwitcher {...props} compact />
         <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Meny"
           className={cx("rounded-lg p-2", open || more.some((n) => isActive(pathname, n.href)) ? "text-indigo-600" : "text-slate-500")}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

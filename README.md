@@ -18,6 +18,7 @@ Plan, lovkrav og veikart: se prosjektdokumentet «Faktura- og regnskapsprogram: 
 - **Eksport:** SAF-T Regnskap 1.30 per år eller måned, og full sikkerhetskopi (ZIP med SAF-T, alle bilag, fakturaer og revisjonslogg).
 - **Lønn:** ansatte med arbeidsforhold og skattekort, lønnskjøring med forskuddstrekk, arbeidsgiveravgift og feriepenger, lønnsslipper, utbetaling og a-melding (XML) per måned. Se under.
 - **Saldobalanse** per år.
+- **Bank:** importer kontoutskrift som CAMT.053 (XML) eller CSV fra nettbanken. Programmet foreslår avstemming mot kundefakturaer (KID, fakturanummer, beløp) og bokførte bilag (samme beløp, nær dato). Sikre forslag godkjennes samlet; resten bokføres direkte fra banklinjen med kontoutskriften som vedlegg. Avstemmingsrapporten viser saldo i banken mot konto 1920 og hva differansen består av. Automatisk henting fra banken (PSD2) krever avtale med en tilbyder og kommer senere.
 
 ### Lovkrav: dette er dekket, og dette gjenstår
 
@@ -66,13 +67,23 @@ npm run dev                     # http://localhost:3000
 
 ## Innlogging
 
-Appen har én bruker. Sett `APP_USER`, `APP_PASSWORD` og `SESSION_SECRET` (minst 32 tegn). Alle sider og API-er krever innlogging, unntatt `/logg-inn` og `/api/helse`.
+Plattformen har flere firma og flere brukere. Hvert firma har sitt eget regnskap, sine egne kunder, fakturaer, dokumenter og brukere, og ingen ser data fra andre firma.
+
+- **Registrering:** Nye firma registrerer seg selv på `/registrer`. Den som registrerer blir administrator. Sett `ALLOW_SIGNUP=false` for å stenge selvregistrering.
+- **Roller per firma:** *Administrator* (alt, også firmaopplysninger og brukere), *Regnskapsfører* (føre bilag, fakturere, kunder og varer) og *Kun lesetilgang*.
+- **Brukere:** Administratoren inviterer under *Brukere*. Invitasjonen er en engangslenke som virker i 14 dager. Administratoren kan endre rolle og fjerne tilgang; firmaet har alltid minst én aktiv administrator.
+- **Flere firma per bruker:** En bruker kan ha tilgang til flere firma (f.eks. en regnskapsfører) og bytter firma i menyen øverst til venstre. *Legg til firma* oppretter et nytt firma der brukeren blir administrator.
+- **Første innlogging etter oppgradering:** Så lenge ingen brukere finnes, kan man logge inn med `APP_USER` og `APP_PASSWORD`. Da opprettes den første brukeren, som blir administrator for alle eksisterende firma. Bytt deretter til e-postadressen din under *Min profil*. Etter dette brukes ikke variablene lenger.
+- **Sikkerhet:** Passord lagres som scrypt-hash. Økter lagres i databasen, så utlogging, passordbytte og fjernet tilgang virker med en gang. `SESSION_SECRET` (minst 32 tegn) signerer innloggingskapselen. Alle spørringer avgrenses til aktivt firma, og databasen har i tillegg sperrer som hindrer at posteringer, fakturaer og betalinger kobles til data i et annet firma.
+- Sett gjerne `APP_URL` (f.eks. `https://regnskap.onrender.com`) slik at invitasjonslenkene får riktig adresse.
+
+Alle sider og API-er krever innlogging, unntatt `/logg-inn`, `/registrer`, `/invitasjon/…` og `/api/helse`.
 
 ## Drift på Render
 
 - Webtjeneste: bygg `npm ci && npm run build`, start `npm run migrate && npm start`.
 - Database: Render PostgreSQL i Frankfurt (EU).
-- Miljøvariabler: `DATABASE_URL`, `APP_USER`, `APP_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`.
+- Miljøvariabler: `DATABASE_URL`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, og valgfritt `APP_URL`, `ALLOW_SIGNUP`. `APP_USER`/`APP_PASSWORD` trengs bare for å opprette første bruker.
 - Oppsettet er beskrevet i `render.yaml` (Render Blueprint).
 - Adresse: https://regnskap.onrender.com. Hver push til `main` deployes automatisk.
 

@@ -7,7 +7,7 @@ import { getEmployee } from "@/db/payroll-repo";
 import EmployeeForm from "../employee-form";
 
 export default async function AnsattPage({ params }: { params: Promise<{ id: string }> }) {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const { id } = await params;
   const employee = await getEmployee(sql, company.id, Number(id));
   if (!employee) notFound();

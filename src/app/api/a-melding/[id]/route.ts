@@ -1,14 +1,15 @@
-import { getSql } from "@/db/client";
-import { getCompany } from "@/db/company-repo";
+import { apiContext, apiErrorStatus } from "@/db/context";
 import { getAMelding } from "@/db/payroll-repo";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const sql = getSql();
-  if (!sql) return new Response("Databasen er ikke koblet til", { status: 503 });
-  const company = await getCompany(sql);
-  if (!company) return new Response("Firmaet er ikke registrert", { status: 404 });
+  let ctx;
+  try {
+    ctx = await apiContext("skriv");
+  } catch (e) {
+    return new Response((e as Error).message, { status: apiErrorStatus(e) });
+  }
   const { id } = await params;
-  const row = await getAMelding(sql, company.id, Number(id));
+  const row = await getAMelding(ctx.sql, ctx.company.id, Number(id));
   if (!row) return new Response("Fant ikke a-meldingen", { status: 404 });
   return new Response(row.xml, {
     headers: {

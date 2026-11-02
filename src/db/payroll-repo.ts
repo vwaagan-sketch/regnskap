@@ -34,7 +34,7 @@ export function validatePayrollSettings(s: PayrollSettings): string[] {
   return e;
 }
 
-export async function savePayrollSettings(sql: postgres.Sql, companyId: number, s: PayrollSettings) {
+export async function savePayrollSettings(sql: postgres.Sql, companyId: number, s: PayrollSettings, actor = "bruker") {
   const errors = validatePayrollSettings(s);
   if (errors.length) throw new Error(errors.join(". "));
   await sql.begin(async (tx) => {
@@ -44,7 +44,7 @@ export async function savePayrollSettings(sql: postgres.Sql, companyId: number, 
       ON CONFLICT (company_id) DO UPDATE SET business_unit_org_no = EXCLUDED.business_unit_org_no,
         aga_zone = EXCLUDED.aga_zone, holiday_pay_rate_bp = EXCLUDED.holiday_pay_rate_bp, updated_at = now()`;
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${companyId}, 'bruker', 'save', 'payroll_settings', ${String(companyId)}, ${tx.json(s as never)})`;
+             VALUES (${companyId}, ${actor}, 'save', 'payroll_settings', ${String(companyId)}, ${tx.json(s as never)})`;
   });
 }
 
@@ -78,7 +78,7 @@ function normalizeEmployee(e: EmployeeInput): EmployeeInput {
   };
 }
 
-export async function createEmployee(sql: postgres.Sql, companyId: number, input: EmployeeInput): Promise<number> {
+export async function createEmployee(sql: postgres.Sql, companyId: number, input: EmployeeInput, actor = "bruker"): Promise<number> {
   const errors = validateEmployee(input);
   if (errors.length) throw new Error(errors.join(". "));
   const e = normalizeEmployee(input);
@@ -97,12 +97,12 @@ export async function createEmployee(sql: postgres.Sql, companyId: number, input
         ${e.hours_per_week}, ${e.pay_type}, ${e.monthly_salary_ore}, ${e.hourly_rate_ore}, ${e.tax_percent})
       RETURNING id`;
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${companyId}, 'bruker', 'create', 'employee', ${String(row.id)}, ${tx.json(e as never)})`;
+             VALUES (${companyId}, ${actor}, 'create', 'employee', ${String(row.id)}, ${tx.json(e as never)})`;
     return row.id;
   }) as Promise<number>;
 }
 
-export async function updateEmployee(sql: postgres.Sql, companyId: number, id: number, input: EmployeeInput) {
+export async function updateEmployee(sql: postgres.Sql, companyId: number, id: number, input: EmployeeInput, actor = "bruker") {
   const errors = validateEmployee(input);
   if (errors.length) throw new Error(errors.join(". "));
   const e = normalizeEmployee(input);
@@ -118,7 +118,7 @@ export async function updateEmployee(sql: postgres.Sql, companyId: number, id: n
       WHERE company_id = ${companyId} AND id = ${id} RETURNING id`;
     if (!rows.length) throw new Error("Fant ikke den ansatte");
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${companyId}, 'bruker', 'update', 'employee', ${String(id)}, ${tx.json(e as never)})`;
+             VALUES (${companyId}, ${actor}, 'update', 'employee', ${String(id)}, ${tx.json(e as never)})`;
   });
 }
 
@@ -439,7 +439,7 @@ export async function buildAMeldingInput(
 }
 
 /** Lager og lagrer a-meldingen for måneden. En ny versjon erstatter den forrige for samme måned. */
-export async function createAMelding(sql: postgres.Sql, company: CompanyRow, period: string) {
+export async function createAMelding(sql: postgres.Sql, company: CompanyRow, period: string, actor = "bruker") {
   return sql.begin(async (tx) => {
     await tx`SELECT pg_advisory_xact_lock(${company.id}, 6)`;
     const [prev] = await tx<{ melding_id: string }[]>`
@@ -453,7 +453,7 @@ export async function createAMelding(sql: postgres.Sql, company: CompanyRow, per
       VALUES (${company.id}, ${period}, ${meldingsId}, ${prev?.melding_id ?? null}, ${sum.sumTaxOre}, ${sum.sumAgaOre}, ${xml})
       RETURNING id`;
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${company.id}, 'bruker', 'create', 'a_melding', ${String(row.id)}, ${tx.json({ period, meldingsId } as never)})`;
+             VALUES (${company.id}, ${actor}, 'create', 'a_melding', ${String(row.id)}, ${tx.json({ period, meldingsId } as never)})`;
     return { id: row.id, meldingsId, ...sum };
   });
 }
