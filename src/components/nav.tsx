@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Archive, BarChart3, BookOpen, Building2, Camera, Check, ChevronsUpDown, FileText, HardDriveDownload, Landmark, LayoutDashboard, ListTree, LogOut, Menu,
-  Package, Percent, Plus, Scale, ShieldCheck, UserCircle, Users, X,
+  Package, Percent, Plus, Scale, ShieldCheck, UserCircle, Users, Wallet, X,
 } from "lucide-react";
 import { can, ROLE_LABELS, type Access, type Role } from "@/lib/auth/roles";
 import { cx } from "./ui";
@@ -33,6 +33,7 @@ export const NAV: { href: string; label: string; icon: typeof Users; access?: Ac
   { href: "/bank", label: "Bank", icon: Landmark },
   { href: "/kunder", label: "Kunder", icon: Users },
   { href: "/varer", label: "Varer", icon: Package },
+  { href: "/lonn", label: "Lønn", icon: Wallet, access: "skriv" },
   { href: "/kontoplan", label: "Kontoplan", icon: ListTree },
   { href: "/rapporter", label: "Rapporter", icon: BarChart3 },
   { href: "/mva", label: "MVA", icon: Percent },

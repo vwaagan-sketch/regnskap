@@ -16,6 +16,7 @@ Plan, lovkrav og veikart: se prosjektdokumentet «Faktura- og regnskapsprogram: 
 - **MVA-melding:** oppstilling per MVA-kode for hver termin (eller årstermin), og bokføring av oppgjøret til 2740.
 - **EHF:** hver faktura og kreditnota kan lastes ned som EHF (Peppol BIS Billing 3.0).
 - **Eksport:** SAF-T Regnskap 1.30 per år eller måned, og full sikkerhetskopi (ZIP med SAF-T, alle bilag, fakturaer og revisjonslogg).
+- **Lønn:** ansatte med arbeidsforhold og skattekort, lønnskjøring med forskuddstrekk, arbeidsgiveravgift og feriepenger, lønnsslipper, utbetaling og a-melding (XML) per måned. Se under.
 - **Saldobalanse** per år.
 - **Bank:** importer kontoutskrift som CAMT.053 (XML) eller CSV fra nettbanken. Programmet foreslår avstemming mot kundefakturaer (KID, fakturanummer, beløp) og bokførte bilag (samme beløp, nær dato). Sikre forslag godkjennes samlet; resten bokføres direkte fra banklinjen med kontoutskriften som vedlegg. Avstemmingsrapporten viser saldo i banken mot konto 1920 og hva differansen består av. Automatisk henting fra banken (PSD2) krever avtale med en tilbyder og kommer senere.
 
@@ -29,7 +30,20 @@ Plan, lovkrav og veikart: se prosjektdokumentet «Faktura- og regnskapsprogram: 
 | MVA-melding | Tallene per kode vises og føres inn på skatteetaten.no. Direkte innsending krever registrering som sluttbrukersystem hos Skatteetaten og ID-porten. |
 | Skattemelding | Resultat og balanse er grunnlag. Næringsspesifikasjonen leveres i Altinn eller via et eget program. |
 | Faktura og EHF | Pliktige opplysninger, løpenummer og EHF-fil. Sending via Peppol krever avtale med et aksesspunkt. |
+| Lønn og a-melding | Se avsnittet «Lønn» nedenfor. |
 | Oppbevaring i 5 år | Bilag med oppbevaringsfrist og SHA-256, ingen sletting, data i EØS (Frankfurt). Krever betalt database hos Render for varig drift og sikkerhetskopi. |
+
+### Lønn
+
+- **Ansatte** (`/lonn/ansatte`): fødselsnummer/D-nummer med kontrollsiffer, arbeidsforhold (start/slutt, stillingsprosent, yrkeskode STYRK-08), fast- eller timelønn og trekkprosent fra skattekortet.
+- **Lønnskjøring** (`/lonn/ny`): lønnsartene fastlønn, timelønn, overtid, bonus, feriepenger og trekk i lønn for ferie. Beregn, kontroller og godkjenn. Godkjent lønn bokføres og lagres uforanderlig; feil rettes med reversering (før utbetaling) eller en ny kjøring med negative linjer.
+- **Forskuddstrekk:** prosenttrekk etter skattekortet, i hele kroner. Tabelltrekk legges inn som beløp per ansatt (fra Skatteetatens trekktabell) inntil tabellene er bygget inn.
+- **Arbeidsgiveravgift:** sone 1–5 (14,1 / 10,6 / 6,4 / 5,1 / 0 %). Sone 1a og 4a med fribeløp støttes ikke ennå.
+- **Feriepenger:** 10,2 % eller 12 % av feriepengegrunnlaget, pluss 2,3 % for arbeidstakere som fyller 60 innen 1. september i ferieåret (grunnlag opp til 6G). Avsettes ved hver lønnskjøring sammen med arbeidsgiveravgift av feriepengene.
+- **Postering:** lønn 5000, forskuddstrekk 2600, skyldig lønn 2930, AGA 5400/2770, avsatte feriepenger 5180/2940 og AGA av feriepenger 5405/2785. Utbetalte feriepenger føres mot 2940. Utbetaling føres 2930 mot 1920, med valgfri overføring av trekket til skattetrekkskontoen 1950.
+- **A-melding:** XML etter Skatteetatens format (v2) per kalendermåned (måneden lønnen utbetales), med frist den 5. i måneden etter. En ny versjon for samme måned erstatter den forrige (`erstatterMeldingsId`). Terminfrister for trekk og AGA (den 15. etter hver tomånederstermin) vises på lønnssiden.
+
+Gjenstår: direkte innsending til a-ordningen (krever Maskinporten og registrering som sluttbrukersystem), innebygde trekktabeller, naturalytelser og utgiftsgodtgjørelser, OTP/pensjon, sykepenger og refusjon fra NAV, permisjoner i a-meldingen, og sone 1a/4a. A-melding-XML-en må valideres mot Skatteetatens XSD og testes i testmiljøet før første innsending. Satser (AGA, G) må kontrolleres hvert år i `src/lib/payroll.ts`.
 
 ## Status
 
