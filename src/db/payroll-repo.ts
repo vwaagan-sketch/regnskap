@@ -3,7 +3,7 @@ import type postgres from "postgres";
 import { buildAMeldingXml, aMeldingSummary, type AMeldingEmployee, type AMeldingInput } from "@/lib/a-melding";
 import { reverseEntry, type JournalEntryDraft } from "@/lib/ledger";
 import {
-  AGA_RATES_BP, PAY_ITEMS, birthDateFromNationalId, calculatePayslip, grunnbeloep, holidayExtraEligible, periodOf,
+  AGA_RATES_BP, PAY_ITEMS, birthDateFromNationalId, calculatePayslip, grunnbeloep, holidayExtraEligible, isActiveIn, periodOf,
   sumPayslips, toPayoutEntry, toPayrollEntry, validateEmployee,
   type AgaZone, type CalculatedPayslip, type EmployeeInput, type PayItemType, type PayLineInput, type TaxInput,
 } from "@/lib/payroll";
@@ -68,13 +68,6 @@ export async function listEmployees(sql: Sql, companyId: number): Promise<Employ
 export async function getEmployee(sql: Sql, companyId: number, id: number): Promise<EmployeeRow | null> {
   const [row] = await sql<EmployeeRow[]>`SELECT ${employeeCols(sql)} FROM employee WHERE company_id = ${companyId} AND id = ${id}`;
   return row ?? null;
-}
-
-/** Ansatte med arbeidsforhold som løper i måneden (yyyy-mm). */
-export function isActiveIn(e: Pick<EmployeeInput, "start_date" | "end_date">, period: string): boolean {
-  const first = `${period}-01`;
-  const last = `${period}-31`;
-  return e.start_date <= last && (!e.end_date || e.end_date >= first);
 }
 
 function normalizeEmployee(e: EmployeeInput): EmployeeInput {

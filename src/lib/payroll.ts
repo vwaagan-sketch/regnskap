@@ -371,6 +371,11 @@ export interface EmployeeInput {
   tax_percent: number;
 }
 
+/** Arbeidsforholdet løper i måneden (yyyy-mm). */
+export function isActiveIn(e: Pick<EmployeeInput, "start_date" | "end_date">, period: string): boolean {
+  return e.start_date <= `${period}-31` && (!e.end_date || e.end_date >= `${period}-01`);
+}
+
 export function validateEmployee(e: EmployeeInput): string[] {
   const errors: string[] = [];
   if (!e.name.trim()) errors.push("Navn mangler");
