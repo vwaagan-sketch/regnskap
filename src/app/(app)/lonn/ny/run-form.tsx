@@ -106,7 +106,7 @@ export default function RunForm({ employees }: { employees: RunEmployee[] }) {
 
   return (
     <div className="grid gap-6">
-      <Card className="grid gap-4 p-5 sm:grid-cols-[12rem_1fr]">
+      <Card className="grid items-start gap-4 p-5 sm:grid-cols-[12rem_1fr]">
         <Field label="Utbetalingsdato" hint={`Rapporteres i a-meldingen for ${monthName(period)}`}>
           <input type="date" value={payDate} onChange={(e) => { setPayDate(e.target.value); setPreview(null); }} className={inputClass} />
         </Field>

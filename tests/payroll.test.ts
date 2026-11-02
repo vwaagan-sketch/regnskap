@@ -3,7 +3,7 @@ import {
   aMeldingDeadline, birthDateFromNationalId, calculatePayslip, holidayExtraEligible, isValidNationalId, paymentTerm,
   percentTax, toPayoutEntry, toPayrollEntry, validateEmployee, type EmployeeInput,
 } from "@/lib/payroll";
-import { buildAMeldingXml, xmlAmount, type AMeldingInput } from "@/lib/a-melding";
+import { buildAMeldingXml, type AMeldingInput } from "@/lib/a-melding";
 import { trialBalance } from "@/lib/ledger";
 
 const base = { agaRateBp: 1410, holidayRateBp: 1020 };
@@ -143,10 +143,5 @@ describe("a-melding", () => {
 
   it("krever virksomhetsnummer", () => {
     expect(() => buildAMeldingXml({ ...input, businessUnitOrgNo: "" })).toThrow(/underenheten/);
-  });
-
-  it("formaterer beløp", () => {
-    expect(xmlAmount(-123456)).toBe("-1234.56");
-    expect(xmlAmount(5)).toBe("0.05");
   });
 });

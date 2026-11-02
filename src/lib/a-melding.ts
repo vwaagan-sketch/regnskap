@@ -1,3 +1,4 @@
+import { amount as xmlAmount, esc } from "./xml";
 import { AGA_RATES_BP, PAY_ITEMS, birthDateFromNationalId, isValidNationalId, type AgaZone, type PayItemType } from "./payroll";
 
 /**
@@ -62,16 +63,6 @@ export function validateAMelding(input: AMeldingInput): string[] {
     if (!/^\d{7}$/.test(e.occupationCode)) errors.push(`${e.name}: yrkeskode mangler`);
   }
   return errors;
-}
-
-const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
-
-/** Øre til desimalbeløp med punktum, f.eks. -123456 -> "-1234.56". */
-export function xmlAmount(ore: number): string {
-  const sign = ore < 0 ? "-" : "";
-  const abs = Math.abs(ore);
-  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`;
 }
 
 const pctText = (bp: number) => (bp / 100).toFixed(1);

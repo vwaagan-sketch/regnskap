@@ -429,7 +429,7 @@ export async function buildAMeldingInput(
     period,
     meldingsId,
     replacesMeldingsId,
-    createdAt: new Date().toISOString().slice(0, 19),
+    createdAt: `${new Date().toISOString().slice(0, 19)}Z`,
     orgNo: company.org_no,
     businessUnitOrgNo: settings.business_unit_org_no,
     agaZone: settings.aga_zone,
