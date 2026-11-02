@@ -50,7 +50,7 @@ export function validateAccount(a: AccountInput): string[] {
   return e;
 }
 
-export async function createAccount(sql: postgres.Sql, companyId: number, a: AccountInput) {
+export async function createAccount(sql: postgres.Sql, companyId: number, a: AccountInput, actor = "bruker") {
   const errors = validateAccount(a);
   if (errors.length) throw new Error(errors.join(". "));
   const exists = await sql`SELECT 1 FROM account WHERE company_id = ${companyId} AND number = ${a.number}`;
@@ -58,13 +58,13 @@ export async function createAccount(sql: postgres.Sql, companyId: number, a: Acc
   await sql`INSERT INTO account (company_id, number, name, vat_category, custom)
             VALUES (${companyId}, ${a.number}, ${a.name.trim()}, ${a.vat_category}, true)`;
   await sql`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-            VALUES (${companyId}, 'bruker', 'create', 'account', ${a.number}, ${sql.json(a as never)})`;
+            VALUES (${companyId}, ${actor}, 'create', 'account', ${a.number}, ${sql.json(a as never)})`;
 }
 
-export async function updateAccount(sql: postgres.Sql, companyId: number, number: string, patch: { name: string; vat_category: VatCategory | null; active: boolean }) {
+export async function updateAccount(sql: postgres.Sql, companyId: number, number: string, patch: { name: string; vat_category: VatCategory | null; active: boolean }, actor = "bruker") {
   const rows = await sql`UPDATE account SET name = ${patch.name.trim()}, vat_category = ${patch.vat_category}, active = ${patch.active}
             WHERE company_id = ${companyId} AND number = ${number} RETURNING number`;
   if (!rows.length) throw new Error("Fant ikke kontoen");
   await sql`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-            VALUES (${companyId}, 'bruker', 'update', 'account', ${number}, ${sql.json(patch as never)})`;
+            VALUES (${companyId}, ${actor}, 'update', 'account', ${number}, ${sql.json(patch as never)})`;
 }

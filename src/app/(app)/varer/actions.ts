@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireContext } from "@/db/context";
+import { actionContext } from "@/db/context";
 import { saveProduct, validateProduct, type ProductInput } from "@/db/product-repo";
 import { parseKr } from "@/lib/money";
 import type { VatCategory } from "@/lib/vat";
@@ -9,7 +9,9 @@ import type { VatCategory } from "@/lib/vat";
 export interface FormResult { ok: boolean; errors: string[] }
 
 export async function saveProductAction(_prev: FormResult, form: FormData): Promise<FormResult> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { ok: false, errors: [error] };
+  const { sql, company } = ctx;
   const t = (k: string) => String(form.get(k) ?? "").trim();
   const price = parseKr(t("price") || "0");
   const input: ProductInput = {

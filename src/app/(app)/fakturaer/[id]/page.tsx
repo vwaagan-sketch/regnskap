@@ -20,7 +20,7 @@ export default async function FakturaPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const inv = await getInvoice(sql, company.id, Number(id));
   if (!inv) notFound();
-  const payments = await getPayments(sql, inv.id);
+  const payments = await getPayments(sql, company.id, inv.id);
   const { invoice: f, totals } = inv.snapshot;
   const isCredit = inv.kind === "credit_note";
   const gross = totals.grossOre;
