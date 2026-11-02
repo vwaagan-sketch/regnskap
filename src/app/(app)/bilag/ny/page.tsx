@@ -4,7 +4,7 @@ import { listDocuments } from "@/db/document-repo";
 import ManualEntryForm from "./manual-form";
 
 export default async function NyttBilagPage({ searchParams }: { searchParams: Promise<{ dokument?: string }> }) {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const { dokument } = await searchParams;
   const accounts = await sql<{ number: string; name: string }[]>`
     SELECT number, name FROM account WHERE company_id = ${company.id} AND active ORDER BY number`;

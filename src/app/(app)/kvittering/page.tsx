@@ -4,7 +4,7 @@ import { listAccounts } from "@/db/account-repo";
 import ReceiptFlow from "./receipt-flow";
 
 export default async function ReceiptPage() {
-  const { sql, company } = await requireContext();
+  const { sql, company } = await requireContext("skriv");
   const accounts = (await listAccounts(sql, company.id, { onlyActive: true }))
     .filter((a) => a.number >= "4000" && a.number < "8000")
     .map((a) => ({ number: a.number, name: a.name }));

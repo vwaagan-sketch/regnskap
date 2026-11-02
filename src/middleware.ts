@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
-const PUBLIC_PATHS = ["/logg-inn", "/api/helse"];
+const PUBLIC_PATHS = ["/logg-inn", "/registrer", "/invitasjon", "/api/helse"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

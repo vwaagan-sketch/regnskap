@@ -1,14 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireContext } from "@/db/context";
+import { actionContext } from "@/db/context";
 import { createCustomer, validateCustomer, type CustomerInput } from "@/db/invoice-repo";
 import { lookupOrgNo } from "../firma/actions";
 
 export interface KundeState { ok: boolean; errors: string[] }
 
 export async function addCustomer(_prev: KundeState, form: FormData): Promise<KundeState> {
-  const { sql, company } = await requireContext();
+  const { ctx, error } = await actionContext("skriv");
+  if (!ctx) return { ok: false, errors: [error] };
+  const { sql, company } = ctx;
   const t = (k: string) => String(form.get(k) ?? "").trim();
   const input: CustomerInput = {
     name: t("name"),

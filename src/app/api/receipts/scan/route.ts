@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
+import { apiContext, apiErrorStatus } from "@/db/context";
 import { scanReceipt, type ImageMediaType } from "@/lib/receipt/scan";
 
 const ALLOWED: ImageMediaType[] = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function POST(req: Request) {
+  try {
+    await apiContext("skriv");
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: apiErrorStatus(e) });
+  }
   const form = await req.formData();
   const file = form.get("image");
   if (!(file instanceof File)) {
