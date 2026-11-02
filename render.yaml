@@ -1,0 +1,33 @@
+# Render Blueprint: beskriver oppsettet på Render (webtjeneste + PostgreSQL i Frankfurt).
+# Brukes ved «New > Blueprint» i Render, f.eks. for å sette opp en ny kopi av appen.
+services:
+  - type: web
+    name: regnskap
+    runtime: node
+    region: frankfurt
+    plan: free # Starter (7 USD/mnd) gjør at siden ikke sovner
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run migrate && npm start
+    healthCheckPath: /api/helse
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: regnskap-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: APP_USER
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+databases:
+  - name: regnskap-db
+    region: frankfurt
+    plan: free # Gratis database slettes etter 30 dager. Velg basic-256mb for varig drift.
+    databaseName: regnskap

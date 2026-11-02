@@ -42,6 +42,20 @@ Appen har én bruker. Sett `APP_USER`, `APP_PASSWORD` og `SESSION_SECRET` (minst
 - Webtjeneste: bygg `npm ci && npm run build`, start `npm run migrate && npm start`.
 - Database: Render PostgreSQL i Frankfurt (EU).
 - Miljøvariabler: `DATABASE_URL`, `APP_USER`, `APP_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`.
+- Oppsettet er beskrevet i `render.yaml` (Render Blueprint).
+- Adresse: https://regnskap.onrender.com. Hver push til `main` deployes automatisk.
+
+### Varig drift
+
+- Gratis webtjeneste sovner etter 15 minutter uten trafikk og bruker opptil ett minutt på å våkne. Starter-planen holder den våken.
+- Gratis database slettes 30 dager etter at den ble opprettet. Oppgrader til en betalt database (Basic) før det, ellers forsvinner regnskapet. Regnskapsdata skal oppbevares i fem år (bokføringsloven § 13).
+
+### Eget domene (valgfritt)
+
+1. Kjøp et domene, f.eks. `firmanavn.no` hos Domeneshop eller One.com (`.no` krever organisasjonsnummer).
+2. I Render: tjenesten *regnskap* → *Settings* → *Custom Domains* → legg til f.eks. `regnskap.firmanavn.no`.
+3. Hos domeneleverandøren: lag en CNAME-post fra `regnskap` til `regnskap.onrender.com`.
+4. Render lager HTTPS-sertifikat automatisk når DNS er på plass.
 
 ## Tester
 
