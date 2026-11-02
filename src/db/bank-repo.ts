@@ -40,6 +40,7 @@ export async function importStatement(
   company: CompanyRow,
   file: { content: Buffer; filename: string; mediaType: string },
   documentDate: string,
+  actor = "bruker",
 ): Promise<ImportResult> {
   const parsed = parseStatementFile(file.content);
   for (const p of parsed) {
@@ -86,7 +87,7 @@ export async function importStatement(
       }
     }
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${company.id}, 'bruker', 'import', 'bank_statement', ${documentId},
+             VALUES (${company.id}, ${actor}, 'import', 'bank_statement', ${documentId},
                      ${tx.json({ filename: file.filename, imported, duplicates })})`;
     return { statements: parsed.length, imported, duplicates, documentId };
   }) as Promise<ImportResult>;
@@ -248,13 +249,13 @@ async function reconcileInTx(tx: Tx, company: CompanyRow, transactionId: string,
 }
 
 /** Godkjenner alle forslag med «sikker» treff. */
-export async function approveSafeSuggestions(sql: postgres.Sql, company: CompanyRow): Promise<number> {
+export async function approveSafeSuggestions(sql: postgres.Sql, company: CompanyRow, actor = "bruker"): Promise<number> {
   return sql.begin(async (tx) => {
     const { suggestions } = await reconciliationSuggestions(tx, company.id);
     let n = 0;
     for (const [txId, s] of suggestions) {
       if (s.confidence !== "sikker") continue;
-      await reconcileInTx(tx, company, txId, suggestionToAction(s), "bruker");
+      await reconcileInTx(tx, company, txId, suggestionToAction(s), actor);
       n++;
     }
     return n;
@@ -266,13 +267,13 @@ export function suggestionToAction(s: Suggestion): MatchAction {
 }
 
 /** Fjerner kobling til et eksisterende bilag. Posteringer laget fra banklinjen må reverseres i stedet. */
-export async function unmatchTransaction(sql: postgres.Sql, companyId: number, transactionId: string) {
+export async function unmatchTransaction(sql: postgres.Sql, companyId: number, transactionId: string, actor = "bruker") {
   await sql.begin(async (tx) => {
     const rows = await tx`DELETE FROM bank_match WHERE transaction_id = ${transactionId} AND company_id = ${companyId}
                           AND kind = 'existing_entry' RETURNING entry_id::text`;
     if (rows.length === 0) throw new Error("Bare koblinger til eksisterende bilag kan fjernes. Reverser bilaget i stedet.");
     await tx`INSERT INTO audit_log (company_id, actor, action, entity, entity_id, data)
-             VALUES (${companyId}, 'bruker', 'unreconcile', 'bank_transaction', ${transactionId}, ${tx.json({ entryId: rows[0].entry_id })})`;
+             VALUES (${companyId}, ${actor}, 'unreconcile', 'bank_transaction', ${transactionId}, ${tx.json({ entryId: rows[0].entry_id })})`;
   });
 }
 

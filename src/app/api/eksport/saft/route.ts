@@ -1,4 +1,4 @@
-import { apiContext } from "@/db/context";
+import { apiContext, apiErrorStatus } from "@/db/context";
 import { exportSaft, saftFilename } from "@/db/saft-repo";
 import { download } from "@/lib/download";
 import { jsonError } from "@/lib/http";
@@ -6,7 +6,7 @@ import { jsonError } from "@/lib/http";
 /** SAF-T Regnskap for ett år (eller et utvalg måneder). */
 export async function GET(req: Request) {
   try {
-    const { sql, company } = await apiContext();
+    const { sql, company } = await apiContext("lese");
     const q = new URL(req.url).searchParams;
     const year = Number(q.get("ar"));
     const fromMonth = Number(q.get("fra") ?? 1);
@@ -17,6 +17,6 @@ export async function GET(req: Request) {
     const xml = await exportSaft(sql, company, { year, fromMonth, toMonth, contactName });
     return download(xml, saftFilename(company.org_no), "application/xml; charset=utf-8");
   } catch (e) {
-    return jsonError((e as Error).message, 500);
+    return jsonError((e as Error).message, apiErrorStatus(e));
   }
 }

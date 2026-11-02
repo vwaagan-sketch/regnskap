@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiContext } from "@/db/context";
+import { apiContext, apiErrorStatus } from "@/db/context";
 import { importStatement } from "@/db/bank-repo";
 import { MAX_DOCUMENT_BYTES } from "@/db/document-repo";
 import { StatementError } from "@/lib/bank/statement";
@@ -10,9 +10,9 @@ import { jsonError, today } from "@/lib/http";
 export async function POST(req: Request) {
   let ctx;
   try {
-    ctx = await apiContext();
+    ctx = await apiContext("skriv");
   } catch (e) {
-    return jsonError((e as Error).message, 503);
+    return jsonError((e as Error).message, apiErrorStatus(e));
   }
   const form = await req.formData();
   const f = form.get("fil");
@@ -27,6 +27,7 @@ export async function POST(req: Request) {
       ctx.company,
       { content: Buffer.from(await f.arrayBuffer()), filename: f.name, mediaType: f.type },
       today(),
+      ctx.user.email,
     );
     return NextResponse.json(r);
   } catch (e) {

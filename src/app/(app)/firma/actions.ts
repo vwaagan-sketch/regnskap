@@ -1,36 +1,56 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireSql } from "@/db/client";
-import { saveCompany, validateCompany, type CompanyInput } from "@/db/company-repo";
+import { redirect } from "next/navigation";
+import { actionContext, getAuth } from "@/db/context";
+import { companyFromForm, updateCompany, validateCompany } from "@/db/company-repo";
+import { addCompanyForUser, switchSessionCompany } from "@/db/user-repo";
 
 export interface FirmaState {
   ok: boolean;
   errors: string[];
 }
 
+/** Oppdaterer opplysningene for firmaet brukeren er logget inn i (bare administrator). */
 export async function saveFirma(_prev: FirmaState, form: FormData): Promise<FirmaState> {
-  const digits = (k: string) => String(form.get(k) ?? "").replace(/\D/g, "");
-  const text = (k: string) => String(form.get(k) ?? "").trim();
-  const input: CompanyInput = {
-    name: text("name"),
-    org_no: digits("org_no"),
-    address: text("address"),
-    postal_code: text("postal_code"),
-    city: text("city"),
-    bank_account: digits("bank_account"),
-    vat_registered: form.get("vat_registered") === "on",
-    in_business_register: form.get("in_business_register") === "on",
-  };
+  const { ctx, error } = await actionContext("admin");
+  if (!ctx) return { ok: false, errors: [error] };
+  const input = companyFromForm(form);
   const errors = validateCompany(input);
   if (errors.length) return { ok: false, errors };
   try {
-    await saveCompany(requireSql(), input);
+    await updateCompany(ctx.sql, ctx.company.id, input, ctx.user.email);
   } catch (e) {
     return { ok: false, errors: [(e as Error).message] };
   }
   revalidatePath("/", "layout");
   return { ok: true, errors: [] };
+}
+
+/** Oppretter et nytt firma for innlogget bruker og bytter til det. */
+export async function createFirma(_prev: FirmaState, form: FormData): Promise<FirmaState> {
+  const auth = await getAuth();
+  if (!auth) return { ok: false, errors: ["Du er ikke innlogget"] };
+  const input = companyFromForm(form);
+  const errors = validateCompany(input);
+  if (errors.length) return { ok: false, errors };
+  try {
+    const companyId = await addCompanyForUser(auth.sql, auth.user, input);
+    await switchSessionCompany(auth.sql, auth.sessionId, auth.user.id, companyId);
+  } catch (e) {
+    return { ok: false, errors: [(e as Error).message] };
+  }
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+/** Bytter hvilket firma brukeren jobber i. */
+export async function switchFirma(form: FormData): Promise<void> {
+  const auth = await getAuth();
+  if (!auth) redirect("/logg-inn");
+  await switchSessionCompany(auth.sql, auth.sessionId, auth.user.id, Number(form.get("companyId")));
+  revalidatePath("/", "layout");
+  redirect("/");
 }
 
 export interface BrregResult {

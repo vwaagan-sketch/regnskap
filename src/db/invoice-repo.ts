@@ -61,7 +61,7 @@ export interface IssueInvoiceInput {
 }
 
 /** Utsteder faktura eller kreditnota: tildeler nummer, lagrer øyeblikksbilde og bokfører i én transaksjon. */
-export async function issueInvoice(sql: postgres.Sql, company: CompanyRow, input: IssueInvoiceInput) {
+export async function issueInvoice(sql: postgres.Sql, company: CompanyRow, input: IssueInvoiceInput, actor = "bruker") {
   return sql.begin(async (tx) => {
     const [cust] = await tx<CustomerRow[]>`SELECT * FROM customer WHERE id = ${input.customerId} AND company_id = ${company.id}`;
     if (!cust) throw new Error("Fant ikke kunden");
@@ -101,7 +101,7 @@ export async function issueInvoice(sql: postgres.Sql, company: CompanyRow, input
               ${tx.json({ invoice: inv, totals, customerNo: cust.customer_no, customerEmail: cust.email } as never)})
       RETURNING id`;
     const entry = toJournalEntry(inv);
-    const posted = await insertEntry(tx, company.id, entry, "bruker");
+    const posted = await insertEntry(tx, company.id, entry, actor);
     if (kind === "credit_note" && input.creditsInvoiceId) {
       // Kreditnotaen gjør opp originalfakturaen i reskontroen.
       await tx`INSERT INTO invoice_payment (company_id, invoice_id, paid_date, amount_ore, entry_id)
@@ -145,21 +145,21 @@ export async function getInvoice(sql: postgres.Sql, companyId: number, id: numbe
   return row ?? null;
 }
 
-export async function getPayments(sql: postgres.Sql, invoiceId: number) {
+export async function getPayments(sql: postgres.Sql, companyId: number, invoiceId: number) {
   return sql<{ paid_date: string; amount_ore: string; voucher_no: number }[]>`
     SELECT to_char(p.paid_date, 'YYYY-MM-DD') AS paid_date, p.amount_ore::text, e.voucher_no
     FROM invoice_payment p JOIN journal_entry e ON e.id = p.entry_id
-    WHERE p.invoice_id = ${invoiceId} ORDER BY p.id`;
+    WHERE p.invoice_id = ${invoiceId} AND p.company_id = ${companyId} ORDER BY p.id`;
 }
 
 /** Registrerer innbetaling: debet bank, kredit kundefordringer. */
-export async function registerPayment(sql: postgres.Sql, companyId: number, invoiceId: number, date: string, amountOre: number) {
-  return sql.begin((tx) => insertPayment(tx, companyId, invoiceId, date, amountOre));
+export async function registerPayment(sql: postgres.Sql, companyId: number, invoiceId: number, date: string, amountOre: number, actor = "bruker") {
+  return sql.begin((tx) => insertPayment(tx, companyId, invoiceId, date, amountOre, actor));
 }
 
 /** Som registerPayment, men inne i en pågående transaksjon (brukes av bankavstemmingen). */
 export async function insertPayment(
-  tx: postgres.TransactionSql, companyId: number, invoiceId: number, date: string, amountOre: number,
+  tx: postgres.TransactionSql, companyId: number, invoiceId: number, date: string, amountOre: number, actor = "bruker",
 ): Promise<{ id: string; voucherNo: number }> {
   await tx`SELECT pg_advisory_xact_lock(${companyId}, 3)`;
   const [inv] = await tx<{ number: number; gross_ore: string; kind: string; customer: string }[]>`
@@ -178,7 +178,7 @@ export async function insertPayment(
       { account: ACCOUNTS.bank, amount: amountOre },
       { account: ACCOUNTS.customerReceivables, amount: -amountOre, description: inv.customer },
     ],
-  }, "bruker");
+  }, actor);
   await tx`INSERT INTO invoice_payment (company_id, invoice_id, paid_date, amount_ore, entry_id)
            VALUES (${companyId}, ${invoiceId}, ${date}, ${amountOre}, ${posted.id})`;
   return posted;

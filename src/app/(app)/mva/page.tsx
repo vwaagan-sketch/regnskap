@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExternalLink, Percent } from "lucide-react";
 import { Alert, Badge, Card, EmptyState, Money, PageHeader, cx, formatDate } from "@/components/ui";
 import { requireContext } from "@/db/context";
+import { can } from "@/lib/auth/roles";
 import { vatLines } from "@/db/report-repo";
 import { getSettlement } from "@/db/vat-repo";
 import { today } from "@/lib/http";
@@ -9,7 +10,7 @@ import { TERMS, buildVatReport, termOf, termPeriod } from "@/lib/vat-report";
 import SettleButton from "./settle-button";
 
 export default async function VatPage({ searchParams }: { searchParams: Promise<{ ar?: string; termin?: string }> }) {
-  const { sql, company } = await requireContext();
+  const { sql, company, role } = await requireContext();
   const sp = await searchParams;
   const now = today();
   const thisYear = Number(now.slice(0, 4));
@@ -88,7 +89,7 @@ export default async function VatPage({ searchParams }: { searchParams: Promise<
               <div className="flex justify-between"><dt className="text-slate-500">Inngående MVA (fradrag)</dt><dd><Money ore={-report.inputOre} /></dd></div>
               <div className="flex justify-between border-t border-slate-100 pt-2 font-semibold"><dt>{report.payableOre >= 0 ? "Å betale" : "Til gode"}</dt><dd><Money ore={Math.abs(report.payableOre)} /></dd></div>
             </dl>
-            {!settlement && company.vat_registered && (
+            {!settlement && company.vat_registered && can(role, "skriv") && (
               <div className="border-t border-slate-100 p-5">
                 <SettleButton year={year} term={term} disabled={!ended || report.lines.length === 0} />
                 <p className="mt-2 text-xs text-slate-500">

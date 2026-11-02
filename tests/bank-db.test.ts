@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { saveCompany, getCompany, type CompanyRow } from "@/db/company-repo";
+import { createCompany, getCompanyById, type CompanyRow } from "@/db/company-repo";
 import { createCustomer, issueInvoice, getInvoice } from "@/db/invoice-repo";
 import { insertEntry } from "@/db/ledger-repo";
 import {
@@ -18,11 +18,11 @@ d("bankimport og avstemming mot database", () => {
 
   beforeAll(async () => {
     await sql`TRUNCATE company RESTART IDENTITY CASCADE`.catch(() => {});
-    await saveCompany(sql, {
+    const id = await sql.begin((tx) => createCompany(tx, {
       name: "Bank AS", org_no: "999888776", address: "Gate 1", postal_code: "0150", city: "Oslo",
       vat_registered: true, in_business_register: true, bank_account: "12345678903",
-    });
-    company = (await getCompany(sql))!;
+    }, "test"));
+    company = (await getCompanyById(sql, id as number))!;
   });
   afterAll(() => sql.end());
 

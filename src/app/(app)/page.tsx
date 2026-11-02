@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Banknote, BookOpen, Camera, FileText, Landmark, Percent, Plus, TrendingUp, Upload } from "lucide-react";
-import { Card, EmptyState, Money, PageHeader, formatDate } from "@/components/ui";
+import { Alert, Card, EmptyState, Money, PageHeader, formatDate } from "@/components/ui";
 import { requireContext } from "@/db/context";
+import { can } from "@/lib/auth/roles";
 import { dashboardStats, listEntries } from "@/db/ledger-repo";
 import { formatKr } from "@/lib/money";
 import { today } from "@/lib/http";
@@ -28,25 +29,32 @@ const QUICK = [
   { href: "/arkiv", label: "Arkiv", text: "Last opp dokumenter", icon: Upload, color: "from-sky-500 to-cyan-500" },
 ];
 
-export default async function Dashboard() {
-  const { sql, company } = await requireContext();
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ "ingen-tilgang"?: string }> }) {
+  const { sql, company, user, role } = await requireContext();
+  const denied = Boolean((await searchParams)["ingen-tilgang"]);
+  const quick = can(role, "skriv") ? QUICK : [];
   const year = Number(today().slice(0, 4));
   const [stats, recent] = await Promise.all([dashboardStats(sql, company.id, year), listEntries(sql, company.id, 6)]);
   const max = Math.max(1, ...stats.months.flatMap((m) => [Number(m.income), Number(m.costs)]));
 
   return (
     <>
-      <PageHeader title={`Hei, ${company.name}`} description={`Regnskapsåret ${year}`} />
+      <PageHeader title={`Hei, ${user.name.split(" ")[0]}`} description={`${company.name} · regnskapsåret ${year}`} />
+      {denied && (
+        <div className="mb-6">
+          <Alert kind="warning">Du har ikke tilgang til siden du prøvde å åpne. Spør en administrator i firmaet om du trenger mer tilgang.</Alert>
+        </div>
+      )}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {QUICK.map(({ href, label, text, icon: Icon, color }) => (
+      {quick.length > 0 && <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {quick.map(({ href, label, text, icon: Icon, color }) => (
           <Link key={href} href={href} className="group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <span className={`inline-grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br text-white ${color}`}><Icon className="h-5 w-5" /></span>
             <p className="mt-3 text-sm font-semibold">{label}</p>
             <p className="text-xs text-slate-500">{text}</p>
           </Link>
         ))}
-      </div>
+      </div>}
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Bank og kontanter" ore={stats.bank} icon={<Landmark className="h-4 w-4" />} />
