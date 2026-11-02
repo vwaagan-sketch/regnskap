@@ -154,26 +154,32 @@ export async function getPayments(sql: postgres.Sql, invoiceId: number) {
 
 /** Registrerer innbetaling: debet bank, kredit kundefordringer. */
 export async function registerPayment(sql: postgres.Sql, companyId: number, invoiceId: number, date: string, amountOre: number) {
-  return sql.begin(async (tx) => {
-    const [inv] = await tx<{ number: number; gross_ore: string; kind: string; customer: string }[]>`
-      SELECT i.number, i.gross_ore::text, i.kind, c.name AS customer FROM invoice i JOIN customer c ON c.id = i.customer_id
-      WHERE i.id = ${invoiceId} AND i.company_id = ${companyId}`;
-    if (!inv || inv.kind !== "invoice") throw new Error("Fant ikke fakturaen");
-    const [{ paid }] = await tx<{ paid: string }[]>`SELECT coalesce(sum(amount_ore), 0)::text AS paid FROM invoice_payment WHERE invoice_id = ${invoiceId}`;
-    const open = Number(inv.gross_ore) - Number(paid);
-    if (amountOre <= 0) throw new Error("Beløpet må være større enn 0");
-    if (amountOre > open) throw new Error("Beløpet er større enn det som står åpent på fakturaen");
-    const posted = await insertEntry(tx, companyId, {
-      date,
-      description: `Innbetaling faktura ${inv.number} ${inv.customer}`,
-      documentRef: `innbetaling:${inv.number}`,
-      lines: [
-        { account: ACCOUNTS.bank, amount: amountOre },
-        { account: ACCOUNTS.customerReceivables, amount: -amountOre, description: inv.customer },
-      ],
-    }, "bruker");
-    await tx`INSERT INTO invoice_payment (company_id, invoice_id, paid_date, amount_ore, entry_id)
-             VALUES (${companyId}, ${invoiceId}, ${date}, ${amountOre}, ${posted.id})`;
-    return posted;
-  });
+  return sql.begin((tx) => insertPayment(tx, companyId, invoiceId, date, amountOre));
+}
+
+/** Som registerPayment, men inne i en pågående transaksjon (brukes av bankavstemmingen). */
+export async function insertPayment(
+  tx: postgres.TransactionSql, companyId: number, invoiceId: number, date: string, amountOre: number,
+): Promise<{ id: string; voucherNo: number }> {
+  await tx`SELECT pg_advisory_xact_lock(${companyId}, 3)`;
+  const [inv] = await tx<{ number: number; gross_ore: string; kind: string; customer: string }[]>`
+    SELECT i.number, i.gross_ore::text, i.kind, c.name AS customer FROM invoice i JOIN customer c ON c.id = i.customer_id
+    WHERE i.id = ${invoiceId} AND i.company_id = ${companyId}`;
+  if (!inv || inv.kind !== "invoice") throw new Error("Fant ikke fakturaen");
+  const [{ paid }] = await tx<{ paid: string }[]>`SELECT coalesce(sum(amount_ore), 0)::text AS paid FROM invoice_payment WHERE invoice_id = ${invoiceId}`;
+  const open = Number(inv.gross_ore) - Number(paid);
+  if (amountOre <= 0) throw new Error("Beløpet må være større enn 0");
+  if (amountOre > open) throw new Error("Beløpet er større enn det som står åpent på fakturaen");
+  const posted = await insertEntry(tx, companyId, {
+    date,
+    description: `Innbetaling faktura ${inv.number} ${inv.customer}`,
+    documentRef: `innbetaling:${inv.number}`,
+    lines: [
+      { account: ACCOUNTS.bank, amount: amountOre },
+      { account: ACCOUNTS.customerReceivables, amount: -amountOre, description: inv.customer },
+    ],
+  }, "bruker");
+  await tx`INSERT INTO invoice_payment (company_id, invoice_id, paid_date, amount_ore, entry_id)
+           VALUES (${companyId}, ${invoiceId}, ${date}, ${amountOre}, ${posted.id})`;
+  return posted;
 }

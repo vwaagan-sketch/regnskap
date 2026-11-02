@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  Archive, BarChart3, BookOpen, Building2, Camera, FileText, HardDriveDownload, LayoutDashboard, ListTree, LogOut, Menu, Package, Percent, Scale, Users, X,
+  Archive, BarChart3, BookOpen, Building2, Camera, FileText, HardDriveDownload, Landmark, LayoutDashboard, ListTree, LogOut, Menu, Package, Percent, Scale, Users, X,
 } from "lucide-react";
 import { cx } from "./ui";
 
@@ -14,6 +14,7 @@ export const NAV = [
   { href: "/bilag", label: "Bilag", icon: BookOpen },
   { href: "/arkiv", label: "Arkiv", icon: Archive },
   { href: "/fakturaer", label: "Fakturaer", icon: FileText },
+  { href: "/bank", label: "Bank", icon: Landmark },
   { href: "/kunder", label: "Kunder", icon: Users },
   { href: "/varer", label: "Varer", icon: Package },
   { href: "/kontoplan", label: "Kontoplan", icon: ListTree },
