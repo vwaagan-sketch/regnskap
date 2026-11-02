@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
-  Archive, BookOpen, Building2, Camera, Check, ChevronsUpDown, FileText, LayoutDashboard, ListTree, LogOut, Package, Plus,
-  Scale, ShieldCheck, UserCircle, Users,
+  Archive, BarChart3, BookOpen, Building2, Camera, Check, ChevronsUpDown, FileText, HardDriveDownload, LayoutDashboard, ListTree, LogOut, Menu,
+  Package, Percent, Plus, Scale, ShieldCheck, UserCircle, Users, X,
 } from "lucide-react";
 import { can, ROLE_LABELS, type Access, type Role } from "@/lib/auth/roles";
 import { cx } from "./ui";
@@ -32,7 +33,10 @@ export const NAV: { href: string; label: string; icon: typeof Users; access?: Ac
   { href: "/kunder", label: "Kunder", icon: Users },
   { href: "/varer", label: "Varer", icon: Package },
   { href: "/kontoplan", label: "Kontoplan", icon: ListTree },
+  { href: "/rapporter", label: "Rapporter", icon: BarChart3 },
+  { href: "/mva", label: "MVA", icon: Percent },
   { href: "/saldobalanse", label: "Saldobalanse", icon: Scale },
+  { href: "/eksport", label: "Eksport", icon: HardDriveDownload },
   { href: "/firma", label: "Firma", icon: Building2, access: "admin" },
   { href: "/brukere", label: "Brukere", icon: ShieldCheck, access: "admin" },
 ];
@@ -150,19 +154,31 @@ export function MobileNav({ company }: { company: NavCompany | null }) {
 
 export function MobileTopBar({ logout, ...props }: NavProps) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [pathname]);
+  const more = visibleNav(props.company).filter((n) => !MOBILE.includes(n.href));
   return (
-    <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-2 border-b border-slate-200 bg-white/90 px-2 backdrop-blur lg:hidden">
-      <CompanySwitcher {...props} compact />
-      <div className="flex min-w-0 items-center overflow-x-auto">
-        {visibleNav(props.company).filter((n) => !MOBILE.includes(n.href)).map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} aria-label={label} className={cx("rounded-lg p-2", isActive(pathname, href) ? "text-indigo-600" : "text-slate-500")}>
-            <Icon className="h-5 w-5" />
-          </Link>
-        ))}
-        <form action={logout}>
-          <button aria-label="Logg ut" className="rounded-lg p-2 text-slate-500"><LogOut className="h-5 w-5" /></button>
-        </form>
+    <header className="no-print sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur lg:hidden">
+      <div className="flex h-14 items-center justify-between gap-2 px-2">
+        <CompanySwitcher {...props} compact />
+        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Meny"
+          className={cx("rounded-lg p-2", open || more.some((n) => isActive(pathname, n.href)) ? "text-indigo-600" : "text-slate-500")}>
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
+      {open && (
+        <nav className="grid grid-cols-2 gap-1 border-t border-slate-100 p-3">
+          {more.map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href}
+              className={cx("flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium", isActive(pathname, href) ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50")}>
+              <Icon className="h-4 w-4" /> {label}
+            </Link>
+          ))}
+          <form action={logout}>
+            <button className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"><LogOut className="h-4 w-4" /> Logg ut</button>
+          </form>
+        </nav>
+      )}
     </header>
   );
 }

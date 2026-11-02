@@ -11,7 +11,24 @@ Plan, lovkrav og veikart: se prosjektdokumentet «Faktura- og regnskapsprogram: 
 - **Bilag:** manuelle bilag med fri postering, automatisk MVA-splitt og vedlegg (ny fil eller fra arkivet). Søkbar bilagsliste.
 - **Arkiv:** dra-og-slipp-opplasting av bilder, PDF og andre filer. Ingenting kan slettes; oppbevaringsfrist vises.
 - **Fakturaer:** kunderegister med oppslag i Brønnøysundregistrene, fakturaer med løpenummer og KID, utskrift/PDF, kreditnota og registrering av innbetaling.
+- **Kontoplan og varer:** egne kontoer med standard MVA, vareregister som fyller ut fakturalinjer.
+- **Rapporter:** resultatregnskap og balanse (med fjorårstall), hovedbok per konto og kundespesifikasjon. Kan skrives ut.
+- **MVA-melding:** oppstilling per MVA-kode for hver termin (eller årstermin), og bokføring av oppgjøret til 2740.
+- **EHF:** hver faktura og kreditnota kan lastes ned som EHF (Peppol BIS Billing 3.0).
+- **Eksport:** SAF-T Regnskap 1.30 per år eller måned, og full sikkerhetskopi (ZIP med SAF-T, alle bilag, fakturaer og revisjonslogg).
 - **Saldobalanse** per år.
+
+### Lovkrav: dette er dekket, og dette gjenstår
+
+| Krav | Status |
+| --- | --- |
+| Bokføring (bokføringsloven § 4–§ 10) | Fortløpende bilagsnummer, posteringer kan ikke endres eller slettes, revisjonslogg. |
+| Spesifikasjoner (bokføringsforskriften § 3-1) | Bilagsjournal, hovedbok, kundespesifikasjon, MVA-oppstilling, resultat og balanse. Leverandørspesifikasjon mangler (krever leverandørregister). |
+| SAF-T Regnskap | Eksport i versjon 1.30. Bør kjøres gjennom Skatteetatens SAF-T-validator før den brukes ved kontroll. Gruppering mot næringsspesifikasjonen (GroupingCategory/GroupingCode) er ikke lagt inn. |
+| MVA-melding | Tallene per kode vises og føres inn på skatteetaten.no. Direkte innsending krever registrering som sluttbrukersystem hos Skatteetaten og ID-porten. |
+| Skattemelding | Resultat og balanse er grunnlag. Næringsspesifikasjonen leveres i Altinn eller via et eget program. |
+| Faktura og EHF | Pliktige opplysninger, løpenummer og EHF-fil. Sending via Peppol krever avtale med et aksesspunkt. |
+| Oppbevaring i 5 år | Bilag med oppbevaringsfrist og SHA-256, ingen sletting, data i EØS (Frankfurt). Krever betalt database hos Render for varig drift og sikkerhetskopi. |
 
 ## Status
 

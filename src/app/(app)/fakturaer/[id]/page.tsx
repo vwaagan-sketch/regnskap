@@ -110,7 +110,7 @@ export default async function FakturaPage({ params }: { params: Promise<{ id: st
       </div>
 
       <aside className="no-print grid h-fit gap-4">
-        <InvoiceActions id={inv.id} isCredit={isCredit} canCredit={!isCredit && !inv.credited_by && paid === 0} openOre={isCredit ? 0 : gross - paid} />
+        <InvoiceActions id={inv.id} isCredit={isCredit} canCredit={!isCredit && !inv.credited_by && paid === 0} openOre={isCredit ? 0 : gross - paid} ehf={Boolean(inv.snapshot.invoice.buyer.orgNo)} />
         {inv.credited_by && <Card className="p-4 text-sm text-slate-600">Kreditert med kreditnota {inv.credited_by}.</Card>}
         {payments.length > 0 && (
           <Card title="Innbetalinger">
