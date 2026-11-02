@@ -10,6 +10,7 @@ Plan, lovkrav og veikart: se prosjektdokumentet «Faktura- og regnskapsprogram: 
 - **Kvittering:** ta bilde med mobilen, Claude leser av leverandør, beløp og MVA, du retter og bokfører. Originalen arkiveres.
 - **Bilag:** manuelle bilag med fri postering, automatisk MVA-splitt og vedlegg (ny fil eller fra arkivet). Søkbar bilagsliste.
 - **Arkiv:** dra-og-slipp-opplasting av bilder, PDF og andre filer. Ingenting kan slettes; oppbevaringsfrist vises.
+- **Bilag på e-post:** hvert firma har en egen innboksadresse. Videresendte kvitteringer og regninger havner i arkivet under «Ikke bokført».
 - **Fakturaer:** kunderegister med oppslag i Brønnøysundregistrene, fakturaer med løpenummer og KID, utskrift/PDF, kreditnota og registrering av innbetaling.
 - **Saldobalanse** per år.
 
@@ -35,13 +36,13 @@ npm run dev                     # http://localhost:3000
 
 ## Innlogging
 
-Appen har én bruker. Sett `APP_USER`, `APP_PASSWORD` og `SESSION_SECRET` (minst 32 tegn). Alle sider og API-er krever innlogging, unntatt `/logg-inn` og `/api/helse`.
+Appen har én bruker. Sett `APP_USER`, `APP_PASSWORD` og `SESSION_SECRET` (minst 32 tegn). Alle sider og API-er krever innlogging, unntatt `/logg-inn`, `/api/helse` og `/api/innboks/*` (som har eget webhook-passord).
 
 ## Drift på Render
 
 - Webtjeneste: bygg `npm ci && npm run build`, start `npm run migrate && npm start`.
 - Database: Render PostgreSQL i Frankfurt (EU).
-- Miljøvariabler: `DATABASE_URL`, `APP_USER`, `APP_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`.
+- Miljøvariabler: `DATABASE_URL`, `APP_USER`, `APP_PASSWORD`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, og for bilag på e-post `INNBOKS_ADRESSE` og `INNBOKS_WEBHOOK_PASSORD`.
 - Oppsettet er beskrevet i `render.yaml` (Render Blueprint).
 - Adresse: https://regnskap.onrender.com. Hver push til `main` deployes automatisk.
 
@@ -56,6 +57,21 @@ Appen har én bruker. Sett `APP_USER`, `APP_PASSWORD` og `SESSION_SECRET` (minst
 2. I Render: tjenesten *regnskap* → *Settings* → *Custom Domains* → legg til f.eks. `regnskap.firmanavn.no`.
 3. Hos domeneleverandøren: lag en CNAME-post fra `regnskap` til `regnskap.onrender.com`.
 4. Render lager HTTPS-sertifikat automatisk når DNS er på plass.
+
+## Bilag på e-post (Postmark)
+
+E-post tas imot av [Postmark](https://postmarkapp.com), som sender hver e-post som JSON til appen. Hvert firma får adressen `<grunnadresse>+<kode>@<domene>`, der koden er tilfeldig og kan byttes under *Firma*. Bare e-post fra godkjente avsendere tas imot.
+
+1. Lag konto på postmarkapp.com og opprett en *Server* (f.eks. «regnskap»).
+2. Gå til serverens *Default Inbound Stream* → *Settings*. Kopier *Inbound email address* (f.eks. `1a2b3c…@inbound.postmarkapp.com`).
+3. Lag et passord: `openssl rand -hex 24`.
+4. Fyll inn *Webhook URL*: `https://postmark:<passord>@regnskap.onrender.com/api/innboks/postmark`.
+5. I Render: legg inn `INNBOKS_ADRESSE` = adressen fra punkt 2 og `INNBOKS_WEBHOOK_PASSORD` = passordet fra punkt 3.
+6. I appen: *Firma* → *Bilag på e-post*: legg inn hvem som får sende (din e-postadresse, eller `@firma.no`), og kopier firmaets adresse.
+
+Med eget domene kan du i stedet bruke f.eks. `bilag@firmanavn.no`: legg en MX-post for domenet (eller et underdomene) til `inbound.postmarkapp.com`, sett *Inbound domain* i Postmark og `INNBOKS_ADRESSE=bilag@firmanavn.no`.
+
+Postmark prøver på nytt hvis appen sover eller svarer med feil, og samme e-post arkiveres aldri to ganger. Avviste e-poster (ukjent avsender, feilet SPF, søppelpost) logges under *Firma*.
 
 ## Tester
 

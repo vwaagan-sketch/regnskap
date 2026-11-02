@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireSql } from "@/db/client";
-import { saveCompany, validateCompany, type CompanyInput } from "@/db/company-repo";
+import { getCompany, saveCompany, validateCompany, type CompanyInput } from "@/db/company-repo";
+import { rotateInboxToken, setAllowedSenders } from "@/db/inbox-repo";
+import { parseAllowedSenders } from "@/lib/inbound/message";
 
 export interface FirmaState {
   ok: boolean;
@@ -62,4 +64,35 @@ export async function lookupOrgNo(orgNo: string): Promise<BrregResult | { error:
   } catch {
     return { error: "Kunne ikke nå Brønnøysundregistrene akkurat nå" };
   }
+}
+
+export interface InboxState {
+  ok: boolean;
+  error: string | null;
+}
+
+/** Lagrer hvem som får sende bilag til firmaets innboksadresse. */
+export async function saveAllowedSenders(_prev: InboxState, form: FormData): Promise<InboxState> {
+  const { senders, invalid } = parseAllowedSenders(String(form.get("allowed_senders") ?? ""));
+  if (invalid.length) return { ok: false, error: `Ugyldig e-postadresse: ${invalid.join(", ")}` };
+  try {
+    const sql = requireSql();
+    const company = await getCompany(sql);
+    if (!company) return { ok: false, error: "Registrer firmaet først" };
+    await setAllowedSenders(sql, company.id, senders);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+  revalidatePath("/firma");
+  return { ok: true, error: null };
+}
+
+/** Lager ny innboksadresse. Den gamle slutter å virke. */
+export async function newInboxAddress(): Promise<void> {
+  const sql = requireSql();
+  const company = await getCompany(sql);
+  if (!company) return;
+  await rotateInboxToken(sql, company.id);
+  revalidatePath("/firma");
+  revalidatePath("/arkiv");
 }
