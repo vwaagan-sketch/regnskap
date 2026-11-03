@@ -1,23 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { actionContext } from "@/db/context";
 import { createInvitation, revokeInvitation, updateMember } from "@/db/user-repo";
 import { isRole } from "@/lib/auth/roles";
+import { baseUrl } from "@/lib/base-url";
 
 export interface InviteState {
   error: string | null;
   link: string | null;
   email: string | null;
-}
-
-async function baseUrl(): Promise<string> {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${proto}://${host}`;
 }
 
 export async function inviteAction(_prev: InviteState, form: FormData): Promise<InviteState> {
