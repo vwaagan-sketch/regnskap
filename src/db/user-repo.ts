@@ -349,3 +349,48 @@ export async function changePassword(
   await sql`UPDATE app_user SET password_hash = ${await hashPassword(next)} WHERE id = ${userId}`;
   await sql`DELETE FROM user_session WHERE user_id = ${userId} AND id <> ${keepSessionId}`;
 }
+
+export const PASSWORD_RESET_MINUTES = 60;
+const MAX_RESETS_PER_HOUR = 3;
+
+/**
+ * Lager en engangslenke for nytt passord. Returnerer null når e-posten ikke finnes eller
+ * det er bedt om for mange lenker den siste timen; svaret til brukeren skal være det samme uansett.
+ */
+export async function createPasswordReset(sql: postgres.Sql, emailInput: string): Promise<{ token: string; user: UserRow } | null> {
+  const user = await findUserByEmail(sql, emailInput);
+  if (!user) return null;
+  const [{ n }] = await sql<{ n: number }[]>`
+    SELECT count(*)::int AS n FROM password_reset WHERE user_id = ${user.id} AND created_at > now() - interval '1 hour'`;
+  if (n >= MAX_RESETS_PER_HOUR) return null;
+  const token = randomBytes(32).toString("base64url");
+  await sql`INSERT INTO password_reset (user_id, token_hash, expires_at)
+            VALUES (${user.id}, ${hashToken(token)}, now() + make_interval(mins => ${PASSWORD_RESET_MINUTES}))`;
+  return { token, user: { id: user.id, email: user.email, name: user.name } };
+}
+
+/** Gyldig (ubrukt, ikke utløpt) lenke, med e-posten den gjelder. */
+export async function getPasswordReset(sql: postgres.Sql, token: string): Promise<{ email: string } | null> {
+  if (!token || token.length > 100) return null;
+  const [row] = await sql<{ email: string }[]>`
+    SELECT u.email FROM password_reset r JOIN app_user u ON u.id = r.user_id
+    WHERE r.token_hash = ${hashToken(token)} AND r.used_at IS NULL AND r.expires_at > now()`;
+  return row ?? null;
+}
+
+/** Setter nytt passord, bruker opp lenken og logger ut alle økter. Returnerer brukerens id. */
+export async function resetPassword(sql: postgres.Sql, token: string, password: string): Promise<number> {
+  const err = validatePassword(password);
+  if (err) throw new UserError(err);
+  const hash = await hashPassword(password);
+  return sql.begin(async (tx) => {
+    const [r] = await tx<{ id: number; user_id: number }[]>`
+      SELECT id, user_id FROM password_reset
+      WHERE token_hash = ${hashToken(token)} AND used_at IS NULL AND expires_at > now() FOR UPDATE`;
+    if (!r) throw new UserError("Lenken er ugyldig, brukt eller utløpt. Be om en ny.");
+    await tx`UPDATE password_reset SET used_at = now() WHERE user_id = ${r.user_id} AND used_at IS NULL`;
+    await tx`UPDATE app_user SET password_hash = ${hash} WHERE id = ${r.user_id}`;
+    await tx`DELETE FROM user_session WHERE user_id = ${r.user_id}`;
+    return r.user_id;
+  }) as Promise<number>;
+}

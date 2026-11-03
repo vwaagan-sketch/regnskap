@@ -9,7 +9,8 @@ import { getCompanyById } from "@/db/company-repo";
 import { getDocument, storeDocument } from "@/db/document-repo";
 import { insertEntry } from "@/db/ledger-repo";
 import {
-  acceptInvitation, addCompanyForUser, authenticate, bootstrapFirstUser, createInvitation, createSession, getInvitation,
+  acceptInvitation, addCompanyForUser, authenticate, bootstrapFirstUser, createInvitation, createPasswordReset, createSession,
+  getInvitation, getPasswordReset, resetPassword,
   listMembers, loadSession, registerCompanyWithAdmin, switchSessionCompany, updateMember,
 } from "@/db/user-repo";
 
@@ -179,5 +180,35 @@ d("flere firma og brukere (krever DATABASE_URL)", () => {
     expect(s?.role).toBe("admin");
     delete process.env.APP_USER;
     delete process.env.APP_PASSWORD;
+  });
+});
+
+d("glemt passord (krever DATABASE_URL)", () => {
+  const sql = postgres(url ?? "", { onnotice: () => {} });
+  afterAll(() => sql.end());
+
+  it("lager engangslenke, setter nytt passord og logger ut gamle økter", async () => {
+    const tag = Math.random().toString(36).slice(2, 8);
+    const email = `glemt-${tag}@a.no`;
+    const { userId } = await registerCompanyWithAdmin(sql, { name: "Glemsk", email, password: "gammelt-passord" }, {
+      name: "Glemt AS", org_no: String(100000000 + Math.floor(Math.random() * 899999999)), address: "Gate 1",
+      postal_code: "0150", city: "Oslo", vat_registered: true, in_business_register: true, bank_account: "12345678903",
+    });
+    const oldSession = await createSession(sql, userId);
+    expect(await createPasswordReset(sql, `ukjent-${tag}@a.no`)).toBeNull();
+    const reset = (await createPasswordReset(sql, email.toUpperCase()))!;
+    expect(reset.user.id).toBe(userId);
+    expect(await getPasswordReset(sql, reset.token)).toMatchObject({ email });
+    await expect(resetPassword(sql, reset.token, "kort")).rejects.toThrow(/minst/);
+    await resetPassword(sql, reset.token, "helt-nytt-passord");
+    expect(await authenticate(sql, email, "helt-nytt-passord")).toMatchObject({ id: userId });
+    expect(await authenticate(sql, email, "gammelt-passord")).toBeNull();
+    expect(await loadSession(sql, oldSession)).toBeNull();
+    await expect(resetPassword(sql, reset.token, "enda-et-passord")).rejects.toThrow(/ugyldig, brukt eller utløpt/);
+    expect(await getPasswordReset(sql, reset.token)).toBeNull();
+    // Høyst tre lenker i timen.
+    await createPasswordReset(sql, email);
+    await createPasswordReset(sql, email);
+    expect(await createPasswordReset(sql, email)).toBeNull();
   });
 });
